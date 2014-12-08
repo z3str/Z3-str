@@ -24,26 +24,25 @@ Please refer to https://sites.google.com/site/z3strsolver/
 
 3. Unzip "z3-src-4.1.1.zip" and patch the original Z3. Z3-str will work with 
    the modified Z3 core.
-   > How to patch Z3 core. 
-     Suppose the folder name after unzipping is "z3".
-       $ cp z3.patch z3/  
-       $ cd z3
-       $ patch -p0 < z3.patch
+   > How to patch Z3 core. Suppose the folder name after unzipping is "z3".
+     >  $ cp z3.patch z3/  
+     >  $ cd z3
+     >  $ patch -p0 < z3.patch
    
    
 4. In the top level folder of Z3 Build the modifed version of Z3
    > $ autoconf
-     $ ./configure
-     $ make
-     $ make a
+   > $ ./configure
+   > $ make
+   > $ make a
    
    
 5. Build  Z3-str
    > Set the path to the patched Z3
-     Modify variable "Z3_path" in the Makefile to indicate the folder location.
+   > Modify variable "Z3_path" in the Makefile to indicate the folder location.
      
    > Build 
-       $ make
+   >>  $ make
 
        
 6. Setup Z3-str driver script
@@ -52,6 +51,5 @@ Please refer to https://sites.google.com/site/z3strsolver/
  
  
 7. Run Z3-str
-     $./Z3-str.py -f <inputFile>
-   e.g 
-     $./Z3-str.py -f test/concat-002
+   >  $./Z3-str.py -f <inputFile>, e.g 
+   >  $./Z3-str.py -f test/concat-002
