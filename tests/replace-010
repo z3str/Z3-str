@@ -1,0 +1,16 @@
+
+(declare-variable x String)
+
+(declare-variable y String)
+
+(declare-variable z String)
+
+
+(assert (= y (Replace x "'" "\\'")) )  ;replacing ‘ with \\' 
+
+(assert (= z (Replace x "p" "_p")) ) ; replacing the letter p with _p 
+
+
+(check-sat) 
+
+(get-model)

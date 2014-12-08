@@ -1,0 +1,15 @@
+(declare-variable x String)
+(declare-variable y String)
+
+(declare-variable Y1 String)
+(declare-variable Y2 String)
+(declare-variable Y3 String)
+(declare-variable Y4 String)
+
+
+(assert (= (Concat x Y1 ) (Concat Y2 y) ) )
+(assert (= (Concat y Y3) (Concat Y4 x) ) )
+
+
+(check-sat)
+(get-model)

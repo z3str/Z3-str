@@ -1,0 +1,11 @@
+(declare-variable x String)
+(declare-variable y String)
+
+
+(assert (= y x) )
+(assert (= (Length y) 4) )
+(assert (or (= x "fg") (= x "abcd") ) )
+;(assert (<= (Length y) 5) )
+
+(check-sat)
+(get-model)

@@ -1,0 +1,22 @@
+(declare-variable x String)
+(declare-variable y String)
+(declare-variable z String)
+(declare-variable w String)
+(declare-variable m1 String)
+(declare-variable m2 String)
+(declare-variable m3 String)
+
+
+
+(assert (= y (Replace x "'" "\\'") ) )  
+(assert (= z (Replace x "p" "_p") ) ) 
+(assert (= w (Replace x "i" "_i") ) )
+(assert (= m1 (Replace x "k" "_k") ) )
+(assert (= m2 (Replace x "b" "_b") ) )
+(assert (= m3 (Replace x "ii" "_i_i") ) )
+
+(assert (= (Length x) 1))
+
+(check-sat) 
+
+(get-model)

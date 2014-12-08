@@ -1,0 +1,10 @@
+(declare-variable x String)
+(declare-variable z String)
+(declare-variable b1 bool)
+
+(assert (= b1 (EndsWith "a" "nba") ) )
+
+
+
+(check-sat)
+(get-model)

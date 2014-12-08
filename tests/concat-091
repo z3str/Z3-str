@@ -1,0 +1,9 @@
+(declare-variable x String)
+
+
+(assert (= (Concat x "b" ) (Concat "a" x) ) )
+
+
+
+(check-sat)
+(get-model)

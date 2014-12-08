@@ -1,0 +1,443 @@
+diff -rupN lib/api_user_theory.cpp ../../../myStrTheory/z3_src_4.1.1/lib/api_user_theory.cpp
+--- lib/api_user_theory.cpp	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/api_user_theory.cpp	2014-11-24 10:22:20.507612119 -0500
+@@ -234,6 +234,46 @@ extern "C" {
+         Z3_CATCH;
+     }
+ 
++    // Integer theory integration
++    // =====================================================================
++    // [start]
++    Z3_ast Z3_theory_get_value_of_len(Z3_theory t, Z3_ast n) {
++      Z3_context c = Z3_theory_get_context(t);
++      Z3_TRY;
++      RESET_ERROR_CODE();
++      return of_ast(mk_t(t)->get_value_of_len(to_ast(n)));
++      Z3_CATCH_RETURN(0);
++    }
++
++    int Z3_theory_get_bound_strlen(Z3_theory t, Z3_ast n, int & lb, int  & ub) {
++      Z3_context c = Z3_theory_get_context(t);
++      Z3_TRY;
++      RESET_ERROR_CODE();
++      return mk_t(t)->get_bound_strlen(to_ast(n), lb, ub);
++      Z3_CATCH_RETURN(0);
++    }
++
++    void Z3_theory_set_arith_new_eq_cb(Z3_theory t, Z3_theory_ast_ast_callback_fptr fptr) {
++      Z3_context c = Z3_theory_get_context(t);
++      Z3_TRY;
++      mk_t(t)->set_arith_new_eq_cb(reinterpret_cast<smt::theory_app_app_callback_fptr>(fptr), reinterpret_cast<smt::user_theory *>(t));
++      RESET_ERROR_CODE();
++      Z3_CATCH;
++    }
++
++    Z3_ast Z3_theory_getArithEqcRoot(Z3_theory t, Z3_ast n) {
++      Z3_context c = Z3_theory_get_context(t);
++      Z3_TRY;
++      RESET_ERROR_CODE();
++      ast * nAst = to_ast(n);
++      if (nAst == NULL)
++        return NULL;
++      return of_ast(mk_t(t)->getArithEqcRoot(nAst));
++      Z3_CATCH_RETURN(0);
++    }
++    // [end]
++    // =====================================================================
++
+     void Z3_theory_assume_eq(Z3_theory t, Z3_ast lhs, Z3_ast rhs) {
+         Z3_context c = Z3_theory_get_context(t);
+         Z3_TRY;
+diff -rupN lib/buffer.h ../../../myStrTheory/z3_src_4.1.1/lib/buffer.h
+--- lib/buffer.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/buffer.h	2014-09-27 02:12:30.421906560 -0400
+@@ -240,7 +240,7 @@ class ptr_buffer : public buffer<T *, fa
+ public:
+     void append(unsigned n, T * const * elems) {
+         for (unsigned i = 0; i < n; i++) {
+-            push_back(elems[i]);
++            this->push_back(elems[i]);
+         }
+     }
+ };
+diff -rupN lib/debug.h ../../../myStrTheory/z3_src_4.1.1/lib/debug.h
+--- lib/debug.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/debug.h	2014-09-27 02:13:23.441908580 -0400
+@@ -18,7 +18,7 @@ Revision History:
+ --*/
+ #ifndef _DEBUG_H_
+ #define _DEBUG_H_
+-
++#include <unistd.h>
+ void enable_assertions(bool f);
+ bool assertions_enabled();
+ 
+diff -rupN lib/ref_vector.h ../../../myStrTheory/z3_src_4.1.1/lib/ref_vector.h
+--- lib/ref_vector.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/ref_vector.h	2014-09-27 02:13:08.357908005 -0400
+@@ -198,12 +198,12 @@ public:
+     
+     ref_vector(ref_vector const & other): 
+         super(ref_manager_wrapper<T, TManager>(other.m_manager)) {
+-        append(other);
++        this->append(other);
+     }
+ 
+     ref_vector(TManager & m, unsigned sz, T * const * data):
+         super(ref_manager_wrapper<T, TManager>(m)) {
+-        append(sz, data);
++        this->append(sz, data);
+     }
+     
+     TManager & get_manager() const {
+@@ -271,7 +271,7 @@ public:
+     ref_vector & set(ref_vector const& other) {
+         if (this != &other) {
+             this->reset();
+-            append(other);
++            this->append(other);
+         }
+         return *this;
+     }
+diff -rupN lib/smt_enode.h ../../../myStrTheory/z3_src_4.1.1/lib/smt_enode.h
+--- lib/smt_enode.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/smt_enode.h	2014-09-26 23:40:28.553558929 -0400
+@@ -91,6 +91,13 @@ namespace smt {
+         friend class euf_manager;
+         friend class conflict_resolution;
+ 
++        // Integer theory integration
++        // =====================================================================
++        // [start]
++        friend class user_theory;
++        // [end]
++        // =====================================================================
++
+         theory_var_list * get_th_var_list() { 
+             return m_th_var_list.get_th_var() == null_theory_var ? 0 : &m_th_var_list; 
+         }
+diff -rupN lib/theory_arith_core.h ../../../myStrTheory/z3_src_4.1.1/lib/theory_arith_core.h
+--- lib/theory_arith_core.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/theory_arith_core.h	2014-12-05 15:23:40.025521445 -0500
+@@ -962,6 +962,23 @@ namespace smt {
+             !m_util.is_real(n1->get_owner())) {
+             return;
+         }
++        // Integer theory integration
++        // =====================================================================
++        // [start]
++        if (m_util.is_int(n1->get_owner()))
++          m_arith_eq_stack.push(var_pair(v1, v2));
++
++        // =====================================================================
++        if (my_arith_new_eq_fptr != NULL && my_string_theory != NULL) {
++          context & ctx = get_context();
++          ast_manager & man = get_manager();
++          ast * ast_v1 = get_enode(v1)->get_owner();
++          ast * ast_v2 = get_enode(v2)->get_owner();
++          my_arith_new_eq_fptr(my_string_theory, to_app(ast_v1), to_app(ast_v2));
++        }
++        // [end]
++        // =====================================================================
++
+         if (m_params.m_arith_eq_bounds) {  
+             enode * n2 = get_enode(v2);
+             SASSERT(n1->get_root() == n2->get_root());
+diff -rupN lib/theory_arith.h ../../../myStrTheory/z3_src_4.1.1/lib/theory_arith.h
+--- lib/theory_arith.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/theory_arith.h	2014-12-05 15:22:36.017519005 -0500
+@@ -36,6 +36,14 @@ Revision History:
+ #include"grobner.h"
+ #include"arith_simplifier_plugin.h"
+ #include"arith_eq_solver.h"
++// Integer theory integration
++// =====================================================================
++// [start]
++#include <stack>
++#include "user_smt_theory.h"
++// [end]
++// =====================================================================
++
+ 
+ namespace smt {
+     
+@@ -86,6 +94,18 @@ namespace smt {
+         typedef typename Ext::inf_numeral inf_numeral;
+         typedef vector<numeral> numeral_vector; 
+ 
++        // Integer theory integration
++        // =====================================================================
++        // [start]
++        typedef std::pair<theory_var, theory_var> var_pair;
++        typedef std::stack<var_pair> eq_stack;
++        friend class user_theory;
++
++        theory_app_app_callback_fptr my_arith_new_eq_fptr;
++        user_theory * my_string_theory;
++        // [end]
++        // =====================================================================
++
+         static const int    dead_row_id = -1;
+         static const bool   proofs_enabled = Ext::proofs_enabled;
+     protected:
+@@ -297,6 +317,13 @@ namespace smt {
+             unsigned    m_bound_kind:1; 
+             unsigned    m_atom:1;
+         public:
++            // Integer theory integration
++            // =====================================================================
++            // [start]
++            friend class user_theory;
++            // [end]
++            // =====================================================================
++
+             bound(theory_var v, inf_numeral const & val, bound_kind k, bool a):
+                 m_var(v),
+                 m_value(val),
+@@ -480,6 +507,13 @@ namespace smt {
+         bool                    m_eager_gcd; // true if gcd should be applied at every add_row
+         unsigned                m_final_check_idx;
+ 
++        // Integer theory integration
++        // =====================================================================
++        // [start]
++        eq_stack            m_arith_eq_stack;
++        // [end]
++        // =====================================================================
++
+         // backtracking
+         svector<bound_trail>    m_bound_trail;
+         svector<unsigned>       m_unassigned_atoms_trail;
+diff -rupN lib/user_smt_theory.cpp ../../../myStrTheory/z3_src_4.1.1/lib/user_smt_theory.cpp
+--- lib/user_smt_theory.cpp	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/user_smt_theory.cpp	2014-11-24 10:57:16.819692009 -0500
+@@ -23,6 +23,14 @@ Revision History:
+ #include"stats.h"
+ #include"warning.h"
+ 
++// Integer theory integration
++// =====================================================================
++// [start]
++#include"theory_arith.h"
++// [end]
++// =====================================================================
++
++
+ namespace smt {
+ 
+     // 
+@@ -187,6 +195,142 @@ namespace smt {
+         } 
+     }
+ 
++
++    // Integer theory integration
++    // =====================================================================
++    // [start]
++    // x = y . r1   V   x = m . r1 /\ y = m . r2
++    // x . b = y . a => r1 . b = r2 . a
++
++    int user_theory::get_bound_strlen(ast * n, int & lb, int & ub) const {
++      lb = -1;
++      ub = -1;
++
++      if (!is_app(n))
++        return 0;
++
++      context & ctx = get_context();
++      ast_manager & man = get_manager();
++      theory_id arith_id = man.get_family_id("arith");
++      theory * arith = ctx.get_theory(arith_id);
++
++      if (man.is_value(to_expr(n)))
++        return 0;
++
++      if (arith == NULL) {
++        printf("ERROR: arith @ %d is NULL. Exit.\n", __LINE__);
++        exit(0);
++      }
++
++      theory_mi_arith* ta1 = dynamic_cast<theory_mi_arith*>(arith);
++      if (ta1 == NULL) {
++        printf("ERROR: ta1 @ %d is NULL. Exit.\n", __LINE__);
++        exit(0);
++      }
++
++      if (arith && ctx.e_internalized(to_app(n))) {
++        enode * e = ctx.get_enode(to_app(n));
++        theory_var r = e->get_th_var(arith_id);
++        if (r != null_theory_var) {
++          theory_mi_arith::bound * b1 = ta1->lower(r);
++          if (b1) {
++            inf_rational i = b1->get_value();
++            lb = i.get_int64();
++          }
++          theory_mi_arith::bound * b2 = ta1->upper(r);
++          if (b2) {
++            inf_rational i = b2->get_value();
++            ub = i.get_int64();
++          }
++          return 1;
++        }
++        return 0;
++      }
++      return 0;
++    }
++
++
++    ast * user_theory::get_value_of_len(ast * n) const {
++      context & ctx = get_context();
++      ast_manager & man = get_manager();
++      theory_id arith_id = man.get_family_id("arith");
++      theory * arith = ctx.get_theory(arith_id);
++
++      if (arith && ctx.e_internalized(to_app(n))) {
++        enode * e = ctx.find_enode(to_app(n));
++        if (e == NULL)
++          return NULL;
++        enode * e_root = e->get_root();
++        e = e_root;
++
++        do {
++          theory_var r = e->get_th_var(arith_id);
++          if (r != null_theory_var) {
++            ast * eq_val = arith->get_enode(r)->get_owner();
++            if (is_app(eq_val)) {
++              expr * e = to_expr(eq_val);
++              if (man.is_value(e)) {
++                return eq_val;
++              }
++            }
++          }
++          e = e->get_next();
++        } while (e != e_root);
++      }
++      return n;
++    }
++
++
++    ast * user_theory::getArithEqcRoot(ast * n1) const {
++      if (n1 == NULL)
++        return NULL;
++      context & ctx = get_context();
++      ast_manager & man = get_manager();
++      theory_id arith_id = man.get_family_id("arith");
++      theory * arith = ctx.get_theory(arith_id);
++      if (arith) {
++        expr *n1_exp = to_expr(n1);
++        if (n1_exp == NULL)
++          return NULL;
++        enode * e1 = ctx.find_enode(n1_exp);
++        if (e1 == NULL) {
++          return NULL;
++        }
++        enode * e1_root = e1->get_root();
++        if (e1_root == NULL)
++          return NULL;
++        return e1_root->get_owner();
++      }
++      return NULL;
++    }
++
++
++    void user_theory::set_arith_new_eq_cb(theory_app_app_callback_fptr fptr, user_theory * t) {
++      context & ctx = get_context();
++      ast_manager & man = get_manager();
++      theory_id arith_id = man.get_family_id("arith");
++      theory * arith = ctx.get_theory(arith_id);
++
++      if (arith == NULL) {
++        printf("ERROR: arith is NULL. Exit.\n");
++        exit(0);
++      }
++
++      theory_mi_arith* ta = dynamic_cast<theory_mi_arith*>(arith);
++      if (ta == NULL) {
++        printf("ERROR: ta is NULL. Exit.\n");
++        exit(0);
++      }
++
++      ta->my_arith_new_eq_fptr = fptr;
++      ta->my_string_theory = t;
++    }
++
++    // [end]
++    // =====================================================================
++
++
++
+     void user_theory::assume_eq(ast * _lhs, ast * _rhs) {
+         if (!is_expr(_lhs) || !is_expr(_rhs)) {
+             throw default_exception("assume_eq must take expressions as arguments");
+diff -rupN lib/user_smt_theory.h ../../../myStrTheory/z3_src_4.1.1/lib/user_smt_theory.h
+--- lib/user_smt_theory.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/user_smt_theory.h	2014-10-27 21:50:51.609487434 -0400
+@@ -25,6 +25,14 @@ Revision History:
+ #include"union_find.h"
+ #include"smt_solver.h"
+ 
++// Integer theory integration
++// =====================================================================
++// [start]
++#include<stack>
++#include"user_smt_theory.h"
++// [end]
++// =====================================================================
++
+ namespace smt {
+ 
+     class user_theory;
+@@ -160,7 +168,21 @@ namespace smt {
+         }
+ 
+         void assert_axiom(ast * axiom);
+-        
++
++        // Integer theory integration
++        // =====================================================================
++        // [start]
++        int get_bound_strlen(ast * n, int & lb, int & ub) const;
++
++        void set_arith_new_eq_cb(theory_app_app_callback_fptr fptr, user_theory * t);
++
++        ast * get_value_of_len(ast * n) const;
++
++        ast * getArithEqcRoot(ast * n1) const;
++        // [end]
++        // =====================================================================
++
++
+         void assume_eq(ast * lhs, ast * rhs);
+ 
+         void enable_axiom_simplification(bool flag) {
+diff -rupN lib/z3_api.h ../../../myStrTheory/z3_src_4.1.1/lib/z3_api.h
+--- lib/z3_api.h	2012-10-02 17:00:52.000000000 -0400
++++ ../../../myStrTheory/z3_src_4.1.1/lib/z3_api.h	2014-10-27 21:49:49.529485277 -0400
+@@ -4712,6 +4712,27 @@ END_MLAPI_EXCLUDE
+     */
+     void Z3_API Z3_theory_assert_axiom(__in Z3_theory t, __in Z3_ast ax);
+ 
++    // Integer theory integration
++    // =====================================================================
++    // [start]
++    /**
++       \brief Return the arithmetic value in the equivalence class containing \c n.
++    */
++    Z3_ast Z3_API Z3_theory_get_value_of_len(__in Z3_theory t, __in Z3_ast n);
++
++    /**
++       \brief Return the arithmetic bound of \c n.
++    */
++    int Z3_API Z3_theory_get_bound_strlen(__in Z3_theory t, __in Z3_ast n, __out int & lb, __out int & ub );
++
++    void Z3_theory_set_arith_new_eq_cb(Z3_theory t, Z3_theory_ast_ast_callback_fptr fptr);
++
++    Z3_ast Z3_theory_getArithEqcRoot(Z3_theory t, Z3_ast n);
++
++    // [end]
++    // =====================================================================
++
++
+     /**
+        \brief Inform to the logical context that \c lhs and \c rhs have the same interpretation
+        in the model being built by theory \c t. If lhs = rhs is inconsistent with other theories,
