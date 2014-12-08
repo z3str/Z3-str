@@ -5,16 +5,17 @@ observed in many existing solvers that encode strings in terms of other primitiv
 
 
 * Documentations:
-===============================================================================
+-------------
 Please refer to https://sites.google.com/site/z3strsolver/
 
 
 
 
-* Install Z3-str
-===============================================================================
 
-1. Check out the latest version of Z3-str from SourceForge GIT Repo.
+* Install Z3-str
+-------------
+
+1. Check out the latest version of Z3-str from the git repo.
 
 
 2. Download the source code of Z3 4.1.1 
