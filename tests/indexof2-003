@@ -1,0 +1,8 @@
+(declare-variable i1 Int)
+(declare-variable i2 Int)
+
+(assert (= i1 (Indexof2 "abc" "b" i2) ) )
+(assert (> i2 1))
+
+(check-sat)
+(get-model)

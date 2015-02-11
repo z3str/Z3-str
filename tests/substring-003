@@ -1,6 +1,3 @@
-(set-option set-param "STRONG_CONTEXT_SIMPLIFIER" "true")
-(set-option set-param "CONTEXT_SIMPLIFIER" "true")
-
 (declare-variable vi1 Int)
 (declare-variable vi2 Int)
 (declare-variable x String)

@@ -1,0 +1,13 @@
+(declare-variable str String)
+(declare-variable var1 Int)
+(declare-variable var2 Int)
+(declare-variable var3 Int)
+
+(assert (= str "Hello world!" ) )
+(assert (= var1 (LastIndexof str "Hello") ) )
+(assert (= var2 (LastIndexof str "World") ) )
+(assert (= var3 (LastIndexof str "world") ) )
+
+
+(check-sat)
+(get-model)

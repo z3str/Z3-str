@@ -1,0 +1,16 @@
+(declare-variable aPosition Int)
+(declare-variable secondPos Int)
+(declare-variable aURL String)
+
+
+// var aURL = "http://www.tizag.com/www.html";
+// var aPosition = aURL.indexOf("www");
+// var secondPos = aURL.indexOf("www", aPosition + 1);
+
+(assert (= "http://www.tizag.com/www.html" aURL) )
+(assert (= aPosition (Indexof  aURL  "www") ) )
+(assert (= secondPos (Indexof2  aURL  "www" (+ aPosition 30) ) ) )
+
+
+(check-sat)
+(get-model)

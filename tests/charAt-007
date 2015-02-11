@@ -1,0 +1,15 @@
+(declare-variable x String)
+(declare-variable i Int)
+
+
+(assert (= "b" (CharAt x i) ) )
+
+(assert (and (>= i 4) (< i (Length x))))
+
+(assert (< (Length x) 7))
+
+(assert (> (Length x) 2))
+
+
+(check-sat)
+(get-model)

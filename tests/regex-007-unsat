@@ -1,0 +1,11 @@
+(declare-variable x String)
+
+
+(assert (= (Length x) 8))
+(assert (RegexIn x (RegexStar (Str2Reg "ced") ) ) ) 
+(assert (RegexIn x (RegexStar (Str2Reg "abcd") ) ) ) 
+
+
+(check-sat)
+(get-model)
+

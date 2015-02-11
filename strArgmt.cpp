@@ -194,6 +194,11 @@ bool isConcatEqType_1(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
     return false;
 }
 
+
+Z3_ast inline getLengthRoot(Z3_theory t, Z3_ast node) {
+  return Z3_theory_getArithEqcRoot(t, mk_length(t, node));
+}
+
 /*
  *
  */
@@ -413,9 +418,9 @@ void processConcatEqType_1(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, m), Z3_mk_add(ctx, 2, addItems)));
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_gt(ctx, mk_length(t, m), mk_length(t, x)));
 
-      addItems[0] = mk_length(t, t1);
-      addItems[1] = mk_length(t, n);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
+//      addItems[0] = mk_length(t, t1);
+//      addItems[1] = mk_length(t, n);
+//      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_gt(ctx, mk_length(t, y), mk_length(t, n)));
 
       option++;
@@ -451,9 +456,9 @@ void processConcatEqType_1(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), Z3_mk_add(ctx, 2, addItems)));
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_gt(ctx, mk_length(t, x), mk_length(t, m)));
 
-      addItems[0] = mk_length(t, t2);
-      addItems[1] = mk_length(t, y);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, n), Z3_mk_add(ctx, 2, addItems)));
+//      addItems[0] = mk_length(t, t2);
+//      addItems[1] = mk_length(t, y);
+//      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, n), Z3_mk_add(ctx, 2, addItems)));
       and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_gt(ctx, mk_length(t, n), mk_length(t, y)));
 
       option++;
@@ -622,12 +627,13 @@ void processConcatEqType_2(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
   if (splitType == 0) {
     Z3_ast temp1_strAst = mk_concat(t, temp1, strAst);
     //--------------------------------------------------------
-    // m cut y, len_x < len_m || len_y > len_str
+    // m cut y,
+    //   |  x  |      y     |
+    //   |    m   |   str   |
     //--------------------------------------------------------
     if (canTwoNodesEq(t, y, temp1_strAst)) {
       if (!avoidLoopCut || !(hasSelfCut(m, y))) {
         // break down option 2-1
-
         Z3_ast l_items[3];
         l_items[0] = Z3_mk_eq(ctx, concatAst1, concatAst2);
 
@@ -668,7 +674,8 @@ void processConcatEqType_2(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
   } else if (splitType == 1) {
     //--------------------------------------
     // break option 2:
-    //   len(x) = len(m) || len(y) = len(str)
+    //   |   x   |    y    |
+    //   |   m   |   str   |
     //--------------------------------------
     Z3_ast ax_l1 = Z3_mk_eq(ctx, concatAst1, concatAst2);
     Z3_ast ax_l2 = mk_2_or(t, Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, m)), Z3_mk_eq(ctx, mk_length(t, y), mk_length(t, strAst)));
@@ -742,9 +749,9 @@ void processConcatEqType_2(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
         addItems[1] = mk_length(t, temp1);
         and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, m), Z3_mk_add(ctx, 2, addItems)));
 
-        addItems[0] = mk_length(t, temp1);
-        addItems[1] = mk_length(t, strAst);
-        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
+//        addItems[0] = mk_length(t, temp1);
+//        addItems[1] = mk_length(t, strAst);
+//        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
 
         option++;
 
@@ -775,14 +782,14 @@ void processConcatEqType_2(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
         and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, x, x_concat));
         and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, y, cropStr));
 
-        if (part1Str.length() == 0) {
-          and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, m)));
-        } else {
-          Z3_ast addItems[2];
-          addItems[0] = mk_length(t, m);
-          addItems[1] = mk_int(ctx, part1Str.length());
-          and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), Z3_mk_add(ctx, 2, addItems)));
-        }
+//        if (part1Str.length() == 0) {
+//          and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, m)));
+//        } else {
+//          Z3_ast addItems[2];
+//          addItems[0] = mk_length(t, m);
+//          addItems[1] = mk_int(ctx, part1Str.length());
+//          and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), Z3_mk_add(ctx, 2, addItems)));
+//        }
         and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), mk_int(ctx, part2Str.length())));
 
         // adding length constraint for _ = constStr seems slowing things down.
@@ -799,10 +806,7 @@ void processConcatEqType_2(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
       addAxiom(t, Z3_mk_implies(ctx, Z3_mk_eq(ctx, concatAst1, concatAst2), implyR), __LINE__);
     } else {
 #ifdef DEBUGLOG
-      __debugPrint(logFile, "\n[STOP @ %d] Should not split two EQ concats:", __LINE__);
-      __debugPrint(logFile, "\n            ");
-      printZ3Node(t, Z3_mk_eq(ctx, concatAst1, concatAst2));
-      __debugPrint(logFile, "\n");
+      __debugPrint(logFile, "\n[STOP @ %d] Should not split two EQ concats\n\n", __LINE__);
 #endif
       return;
     }
@@ -877,7 +881,6 @@ void processConcatEqType_3(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
   Z3_ast y = NULL;
   Z3_ast strAst = NULL;
   Z3_ast n = NULL;
-  Z3_ast xorFlag = NULL;
 
   if (getNodeType(t, v1_arg0) == my_Z3_ConstStr && getNodeType(t, v2_arg0) != my_Z3_ConstStr) {
     strAst = v1_arg0;
@@ -891,6 +894,17 @@ void processConcatEqType_3(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
     y = v1_arg1;
   }
 
+  // -----------------------------
+  // type 3:
+  // x . y = str . n
+  // -----------------------------
+  std::string strValue = getConstStrValue(t, strAst);
+  int x_len = getLenValue(t, x);
+  int y_len = getLenValue(t, y);
+  int str_len = getLenValue(t, strAst);
+  int n_len = getLenValue(t, n);
+
+  Z3_ast xorFlag = NULL;
   Z3_ast temp1 = NULL;
   std::pair<Z3_ast, Z3_ast> key1(concatAst1, concatAst2);
   std::pair<Z3_ast, Z3_ast> key2(concatAst2, concatAst1);
@@ -910,95 +924,205 @@ void processConcatEqType_3(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
     }
   }
 
-  std::string strValue = getConstStrValue(t, strAst);
-  int optionTotal = 2 + strValue.length();
-  Z3_ast * or_item = new Z3_ast[optionTotal];
-  int option = 0;
-  Z3_ast * and_item = new Z3_ast[2 + 4 * optionTotal];
-  int pos = 1;
-  for (int i = 0; i <= (int) strValue.size(); i++) {
-    std::string part1Str = strValue.substr(0, i);
-    std::string part2Str = strValue.substr(i, strValue.size() - i);
-    Z3_ast cropStr = my_mk_str_value(t, part1Str.c_str());
-    Z3_ast suffixStr = my_mk_str_value(t, part2Str.c_str());
-    Z3_ast y_concat = mk_concat(t, suffixStr, n);
 
-    if (canTwoNodesEq(t, x, cropStr) && canTwoNodesEq(t, y, y_concat)) {
-      // break down option 3-1
-      Z3_ast x_eq_str = Z3_mk_eq(ctx, x, cropStr);
-      or_item[option] = Z3_mk_eq(ctx, xorFlag, mk_int(ctx, option));
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], x_eq_str);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, y, y_concat));
-
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, cropStr)));
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), mk_length(t, y_concat)));
-
-      // adding length constraint for _ = constStr seems slowing things down.
-      option++;
-    }
-  }
-
-  Z3_ast strAst_temp1 = mk_concat(t, strAst, temp1);
-
-  //--------------------------------------------------------
-  // x cut n
-  //--------------------------------------------------------
-  if (canTwoNodesEq(t, x, strAst_temp1)) {
-    if (!avoidLoopCut || !(hasSelfCut(x, n))) {
-      // break down option 3-2
-      or_item[option] = Z3_mk_eq(ctx, xorFlag, mk_int(ctx, option));
-
-      Z3_ast temp1_y = mk_concat(t, temp1, y);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, x, strAst_temp1));
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, n, temp1_y));
-
-      Z3_ast addItems[2];
-      addItems[0] = mk_length(t, strAst);
-      addItems[1] = mk_length(t, temp1);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), Z3_mk_add(ctx, 2, addItems)));
-
-      addItems[0] = mk_length(t, temp1);
-      addItems[1] = mk_length(t, y);
-      and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, n), Z3_mk_add(ctx, 2, addItems)));
-
-      option++;
-
-      //--- Cut Info----
-      addCutInfoMerge(temp1, sLevel, x);
-      addCutInfoMerge(temp1, sLevel, n);
-    } else {
-      loopDetected = true;
-#ifdef DEBUGLOG
-      __debugPrint(logFile, "-------------------\n");
-      __debugPrint(logFile, "[AVOID Loop] Skip @ %d.\n", __LINE__);
-      printCutVAR(t, x);
-      printCutVAR(t, n);
-      __debugPrint(logFile, "-------------------\n");
-#endif
-    }
-  }
-
-  if (option > 0) {
-    if (option == 1)
-      and_item[0] = or_item[0];
+  int splitType = -1;
+  if (x_len != -1) {
+    if (x_len < str_len)
+      splitType = 0;
+    else if (x_len == str_len)
+      splitType = 1;
     else
-      and_item[0] = Z3_mk_or(ctx, option, or_item);
-    Z3_ast implyR = Z3_mk_and(ctx, pos, and_item);
-    addAxiom(t, Z3_mk_implies(ctx, Z3_mk_eq(ctx, concatAst1, concatAst2), implyR), __LINE__);
-  } else {
+      splitType = 2;
+  }
+  if (splitType == -1 && y_len != -1 && n_len != -1) {
+    if (y_len > n_len)
+      splitType = 0;
+    else if (y_len == n_len)
+      splitType = 1;
+    else
+      splitType = 2;
+  }
+  __debugPrint(logFile, ">> SplitType = %d @ %d.\n\n", splitType, __LINE__);
+
+  // #############################################################################
+  // Begin: providing less split options when length information is available
+  // x . y = str. n
+  if (splitType == 0) {
+    //   |   x   |    y     |
+    //   |  str     |   n   |
+    std::vector<Z3_ast> litems;
+    litems.push_back(Z3_mk_eq(ctx, concatAst1, concatAst2));
+    int prefixLen = 0;
+    if (x_len == -1) {
+      prefixLen = str_len - (y_len - n_len);
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, y), mk_int(ctx, y_len)));
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, n), mk_int(ctx, n_len)));
+    } else {
+      prefixLen = x_len;
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, x), mk_int(ctx, x_len)));
+    }
+    std::string prefixStr = strValue.substr(0, prefixLen);
+    std::string suffixStr = strValue.substr(prefixLen, str_len - prefixLen);
+    Z3_ast prefixAst = my_mk_str_value(t, prefixStr.c_str());
+    Z3_ast suffixAst = my_mk_str_value(t, suffixStr.c_str());
+    Z3_ast ax_l = mk_and_fromVector(t, litems);
+
+    Z3_ast suf_n_concat = mk_concat(t, suffixAst, n);
+    if (canTwoNodesEq(t, x, prefixAst) && canTwoNodesEq(t, y, suf_n_concat)) {
+      Z3_ast r_items[2];
+      r_items[0] = Z3_mk_eq(ctx, x, prefixAst);
+      r_items[1] = Z3_mk_eq(ctx, y, suf_n_concat);
+      addAxiom(t, Z3_mk_implies(ctx, ax_l, Z3_mk_and(ctx, 2, r_items)), __LINE__);
+    } else {
+      // negate! It's impossible to split str with these lengths
+      __debugPrint(logFile, "[Conflict] Negate! It's impossible to split str with these lengths @ %d.\n", __LINE__);
+      addAxiom(t, Z3_mk_not(ctx, ax_l), __LINE__);
+    }
+  }
+  //
+  else if (splitType == 1) {
+    Z3_ast ax_l1 = Z3_mk_eq(ctx, concatAst1, concatAst2);
+    Z3_ast ax_l2 = mk_2_or(t, Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, strAst)), Z3_mk_eq(ctx, mk_length(t, y), mk_length(t, n)));
+    Z3_ast ax_l = mk_2_and(t, ax_l1, ax_l2);
+    Z3_ast ax_r = mk_2_and(t, Z3_mk_eq(ctx, x, strAst), Z3_mk_eq(ctx, y, n));
+    addAxiom(t, Z3_mk_implies(ctx, ax_l, ax_r), __LINE__);
+  }
+  //
+  else if (splitType == 2) {
+    //   |   x        |    y     |
+    //   |  str   |       n      |
+    std::vector<Z3_ast> litems;
+    litems.push_back(Z3_mk_eq(ctx, concatAst1, concatAst2));
+    int tmpLen = 0;
+    if (x_len == -1) {
+      tmpLen = n_len - y_len;
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, y), mk_int(ctx, y_len)));
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, n), mk_int(ctx, n_len)));
+    } else {
+      tmpLen = x_len - str_len;
+      litems.push_back(Z3_mk_eq(ctx, mk_length(t, x), mk_int(ctx, x_len)));
+    }
+    Z3_ast ax_l = mk_and_fromVector(t, litems);
+
+    Z3_ast str_temp1 = mk_concat(t, strAst, temp1);
+    Z3_ast temp1_y = mk_concat(t, temp1, y);
+    if (canTwoNodesEq(t, x, str_temp1)) {
+      if (!avoidLoopCut || !(hasSelfCut(x, n))) {
+        Z3_ast r_items[3];
+        r_items[0] = Z3_mk_eq(ctx, x, str_temp1);
+        r_items[1] = Z3_mk_eq(ctx, n, temp1_y);
+        r_items[2] = Z3_mk_eq(ctx, mk_length(t, temp1), mk_int(ctx, tmpLen));
+        Z3_ast ax_r = Z3_mk_and(ctx, 3, r_items);
+
+        //Cut Info
+        addCutInfoMerge(temp1, sLevel, x);
+        addCutInfoMerge(temp1, sLevel, n);
+
+        addAxiom(t, Z3_mk_implies(ctx, ax_l, ax_r), __LINE__);
+      } else {
+        loopDetected = true;
 #ifdef DEBUGLOG
-    __debugPrint(logFile, "\n[STOP @ %d] Should not split two EQ concats:", __LINE__);
-    __debugPrint(logFile, "\n            ");
-    printZ3Node(t, concatAst1);
-    __debugPrint(logFile, "  =  ");
-    printZ3Node(t, concatAst2);
-    __debugPrint(logFile, "\n");
+        __debugPrint(logFile, "-------------------\n");
+        __debugPrint(logFile, "[AVOID Looping Cut] Skip @ %d.\n", __LINE__);
+        printCutVAR(t, x);
+        printCutVAR(t, n);
+        __debugPrint(logFile, "-------------------\n");
 #endif
+      }
+    }
+//    else {
+//      // negate! It's impossible to split str with these lengths
+//      __debugPrint(logFile, "[Conflict] Negate! It's impossible to split str with these lengths @ %d.\n", __LINE__);
+//      addAxiom(t, Z3_mk_not(ctx, ax_l), __LINE__);
+//    }
+  }
+  // we know nothing about the length.
+  else {
+    std::string strValue = getConstStrValue(t, strAst);
+    int optionTotal = 2 + strValue.length();
+    Z3_ast * or_item = new Z3_ast[optionTotal];
+    int option = 0;
+    Z3_ast * and_item = new Z3_ast[2 + 4 * optionTotal];
+    int pos = 1;
+    for (int i = 0; i <= (int) strValue.size(); i++) {
+      std::string part1Str = strValue.substr(0, i);
+      std::string part2Str = strValue.substr(i, strValue.size() - i);
+      Z3_ast cropStr = my_mk_str_value(t, part1Str.c_str());
+      Z3_ast suffixStr = my_mk_str_value(t, part2Str.c_str());
+      Z3_ast y_concat = mk_concat(t, suffixStr, n);
+
+      if (canTwoNodesEq(t, x, cropStr) && canTwoNodesEq(t, y, y_concat)) {
+        // break down option 3-1
+        Z3_ast x_eq_str = Z3_mk_eq(ctx, x, cropStr);
+        or_item[option] = Z3_mk_eq(ctx, xorFlag, mk_int(ctx, option));
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], x_eq_str);
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, y, y_concat));
+
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), mk_length(t, cropStr)));
+//        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), mk_length(t, y_concat)));
+
+        // adding length constraint for _ = constStr seems slowing things down.
+        option++;
+      }
+    }
+
+    Z3_ast strAst_temp1 = mk_concat(t, strAst, temp1);
+
+    //--------------------------------------------------------
+    // x cut n
+    //--------------------------------------------------------
+    if (canTwoNodesEq(t, x, strAst_temp1)) {
+      if (!avoidLoopCut || !(hasSelfCut(x, n))) {
+        // break down option 3-2
+        or_item[option] = Z3_mk_eq(ctx, xorFlag, mk_int(ctx, option));
+
+        Z3_ast temp1_y = mk_concat(t, temp1, y);
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, x, strAst_temp1));
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, n, temp1_y));
+
+        Z3_ast addItems[2];
+        addItems[0] = mk_length(t, strAst);
+        addItems[1] = mk_length(t, temp1);
+        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, x), Z3_mk_add(ctx, 2, addItems)));
+
+//        addItems[0] = mk_length(t, temp1);
+//        addItems[1] = mk_length(t, y);
+//        and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, n), Z3_mk_add(ctx, 2, addItems)));
+
+        option++;
+
+        //--- Cut Info----
+        addCutInfoMerge(temp1, sLevel, x);
+        addCutInfoMerge(temp1, sLevel, n);
+      } else {
+        loopDetected = true;
+#ifdef DEBUGLOG
+        __debugPrint(logFile, "-------------------\n");
+        __debugPrint(logFile, "[AVOID Loop] Skip @ %d.\n", __LINE__);
+        printCutVAR(t, x);
+        printCutVAR(t, n);
+        __debugPrint(logFile, "-------------------\n");
+#endif
+      }
+    }
+
+    if (option > 0) {
+      if (option == 1)
+        and_item[0] = or_item[0];
+      else
+        and_item[0] = Z3_mk_or(ctx, option, or_item);
+      Z3_ast implyR = Z3_mk_and(ctx, pos, and_item);
+      addAxiom(t, Z3_mk_implies(ctx, Z3_mk_eq(ctx, concatAst1, concatAst2), implyR), __LINE__);
+    } else {
+#ifdef DEBUGLOG
+      __debugPrint(logFile, "\n[STOP @ %d] Should not split two EQ concats\n\n", __LINE__);
+#endif
+      return;
+    }
+    delete[] or_item;
+    delete[] and_item;
     return;
   }
-  delete[] or_item;
-  delete[] and_item;
-  return;
 }
 
 /*************************************************************
@@ -1309,9 +1433,9 @@ void processConcatEqType_6(Z3_theory t, Z3_ast concatAst1, Z3_ast concatAst2) {
     addItems[1] = mk_length(t, commonVar);
     and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, m), Z3_mk_add(ctx, 2, addItems)));
 
-    addItems[0] = mk_length(t, commonVar);
-    addItems[1] = mk_length(t, str2Ast);
-    and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
+//    addItems[0] = mk_length(t, commonVar);
+//    addItems[1] = mk_length(t, str2Ast);
+//    and_item[pos++] = Z3_mk_eq(ctx, or_item[option], Z3_mk_eq(ctx, mk_length(t, y), Z3_mk_add(ctx, 2, addItems)));
 
     option++;
   } else {
@@ -1536,10 +1660,6 @@ void simplifyConcatEq(Z3_theory t, Z3_ast nn1, Z3_ast nn2, int duplicateCheck) {
     addAxiom(t, Z3_mk_implies(ctx, implyL, implyR), __LINE__);
   }
 
-
-  int duplicatedSplit = 0;
-
-
   //*****************************************************
   // Start to split two Concats
   //*****************************************************
@@ -1548,36 +1668,28 @@ void simplifyConcatEq(Z3_theory t, Z3_ast nn1, Z3_ast nn2, int duplicateCheck) {
   checkandInit_cutVAR(t, v2_arg0);
   checkandInit_cutVAR(t, v2_arg1);
 
-  duplicatedSplit = 0;
-
   //*************************************************************
   // case 1: concat(x, y) = concat(m, n)
   //*************************************************************
-  if (duplicatedSplit == 0) {
-    if (isConcatEqType_1(t, new_nn1, new_nn2)){
-      processConcatEqType_1(t, new_nn1, new_nn2);
-      return;
-    }
+  if (isConcatEqType_1(t, new_nn1, new_nn2)) {
+    processConcatEqType_1(t, new_nn1, new_nn2);
+    return;
   }
 
   //*************************************************************
   // case 2: concat(x, y) = concat(m, "str")
   //*************************************************************
-  if (duplicatedSplit == 0) {
-    if (isConcatEqType_2(t, new_nn1, new_nn2)) {
-      processConcatEqType_2(t, new_nn1, new_nn2);
-      return;
-    }
+  if (isConcatEqType_2(t, new_nn1, new_nn2)) {
+    processConcatEqType_2(t, new_nn1, new_nn2);
+    return;
   }
 
   //*************************************************************
   // case 3: concat(x, y) = concat("str", n)
   //*************************************************************
-  if (duplicatedSplit == 0) {
-    if (isConcatEqType_3(t, new_nn1, new_nn2)) {
-      processConcatEqType_3(t, new_nn1, new_nn2);
-      return;
-    }
+  if (isConcatEqType_3(t, new_nn1, new_nn2)) {
+    processConcatEqType_3(t, new_nn1, new_nn2);
+    return;
   }
 
   //*************************************************************
@@ -1587,7 +1699,6 @@ void simplifyConcatEq(Z3_theory t, Z3_ast nn1, Z3_ast nn2, int duplicateCheck) {
     processConcatEqType_4(t, new_nn1, new_nn2);
     return;
   }
-
 
   //*************************************************************
   //  case 5: concat(x, "str1") = concat(m, "str2")
@@ -1599,11 +1710,316 @@ void simplifyConcatEq(Z3_theory t, Z3_ast nn1, Z3_ast nn2, int duplicateCheck) {
   //*************************************************************
   //  case 6: concat("str1", y) = concat(m, "str2")
   //*************************************************************
-  if (duplicatedSplit == 0) {
-    if (isConcatEqType_6(t, new_nn1, new_nn2)) {
-      processConcatEqType_6(t, new_nn1, new_nn2);
+  if (isConcatEqType_6(t, new_nn1, new_nn2)) {
+    processConcatEqType_6(t, new_nn1, new_nn2);
+    return;
+  }
+}
+
+
+
+//------------------------------------------------------------
+// solve concat of pattern:
+//    constStr == Concat( constrStr, xx )
+//    constStr == Concat( xx, constrStr )
+//------------------------------------------------------------
+void solve_concat_eq_str(Z3_theory t, Z3_ast concatAst, Z3_ast constStr) {
+#ifdef DEBUGLOG
+  __debugPrint(logFile, "\n\n===============================\n");
+  __debugPrint(logFile, "**** solve_concat_eq_str:\n");
+  printZ3Node(t, concatAst);
+  __debugPrint(logFile, " = ");
+  printZ3Node(t, constStr);
+  __debugPrint(logFile, "\n");
+  printStrArgLen(t, concatAst);
+  printStrArgLen(t, constStr);
+  __debugPrint(logFile, "===============================\n");
+#endif
+  Z3_context ctx = Z3_theory_get_context(t);
+  if (isConcatFunc(t, concatAst) && isConstStr(t, constStr)) {
+    std::string const_str = getConstStrValue(t, constStr);
+    Z3_ast a1 = Z3_get_app_arg(ctx, Z3_to_app(ctx, concatAst), 0);
+    Z3_ast a2 = Z3_get_app_arg(ctx, Z3_to_app(ctx, concatAst), 1);
+
+    if (const_str == "") {
+#ifdef DEBUGLOG
+  __debugPrint(logFile, " >> quick path ...\n");
+#endif
+      Z3_ast empty1 = Z3_mk_eq(ctx, a1, constStr);
+      Z3_ast empty2 = Z3_mk_eq(ctx, a2, constStr);
+      Z3_ast epL = Z3_mk_eq(ctx,  concatAst, constStr);
+      Z3_ast epR = mk_2_and(t, empty1, empty2);
+      addAxiom(t, Z3_mk_implies(ctx, epL, epR), __LINE__);
       return;
+    }
+    bool arg1HasEqcValue = false;
+    bool arg2HasEqcValue = false;
+    Z3_ast arg1 = get_eqc_value(t, a1, arg1HasEqcValue);
+    Z3_ast arg2 = get_eqc_value(t, a2, arg2HasEqcValue);
+    Z3_ast newConcat = NULL;
+    if (arg1 != a1 || arg2 != a2) {
+      int iPos = 0;
+      Z3_ast item1[2];
+      if (a1 != arg1)
+        item1[iPos++] = Z3_mk_eq(ctx, a1, arg1);
+      if (a2 != arg2)
+        item1[iPos++] = Z3_mk_eq(ctx, a2, arg2);
+      Z3_ast implyL1 = NULL;
+      if (iPos == 1)
+        implyL1 = item1[0];
+      else
+        implyL1 = Z3_mk_and(ctx, 2, item1);
+
+      newConcat = mk_concat(t, arg1, arg2);
+
+      if (newConcat != constStr) {
+        Z3_ast implyR1 = Z3_mk_eq(ctx, concatAst, newConcat);
+        addAxiom(t, Z3_mk_implies(ctx, implyL1, implyR1), __LINE__);
+      }
+    } else {
+      newConcat = concatAst;
+    }
+
+    if (newConcat == constStr)
+      return;
+
+    if (!isConcatFunc(t, newConcat))
+      return;
+
+    //---------------------------------------------------------------------
+    // (1) Concat(const_Str, const_Str) = const_Str
+    //---------------------------------------------------------------------
+    if (arg1HasEqcValue && arg2HasEqcValue) {
+      std::string arg1_str = getConstStrValue(t, arg1);
+      std::string arg2_str = getConstStrValue(t, arg2);
+      std::string result_str = arg1_str + arg2_str;
+      if (result_str != const_str) {
+        // negate
+        addAxiom(t, Z3_mk_not(ctx, Z3_mk_eq(ctx, concatAst, constStr)), __LINE__);
+        return;
+      }
+    }
+
+    //---------------------------------------------------------------------
+    // (2) Concat( var, const_Str ) = const_Str
+    //---------------------------------------------------------------------
+    else if (!arg1HasEqcValue && arg2HasEqcValue) {
+      std::string arg2_str = getConstStrValue(t, arg2);
+      int resultStrLen = const_str.length();
+      int arg2StrLen = arg2_str.length();
+      if (resultStrLen < arg2StrLen) {
+        // negate
+        addAxiom(t, Z3_mk_not(ctx, Z3_mk_eq(ctx, newConcat, constStr)), __LINE__);
+        return;
+      } else {
+        int varStrLen = resultStrLen - arg2StrLen;
+        std::string firstPart = const_str.substr(0, varStrLen);
+        std::string secondPart = const_str.substr(varStrLen, arg2StrLen);
+        if (arg2_str != secondPart) {
+          // negate
+          Z3_ast negateAst = Z3_mk_not(ctx, Z3_mk_eq(ctx, newConcat, constStr));
+          addAxiom(t, negateAst, __LINE__);
+          return;
+        } else {
+          Z3_ast tmpStrConst = my_mk_str_value(t, firstPart.c_str());
+          Z3_ast implyL = Z3_mk_eq(ctx, newConcat, constStr);
+          Z3_ast implyR = Z3_mk_eq(ctx, arg1, tmpStrConst);
+          addAxiom(t, Z3_mk_implies(ctx, implyL, implyR), __LINE__);
+        }
+      }
+    }
+
+    //---------------------------------------------------------------------
+    // (3) Concat(const_Str, var) = const_Str
+    //---------------------------------------------------------------------
+    else if (arg1HasEqcValue && !arg2HasEqcValue) {
+      std::string arg1_str = getConstStrValue(t, arg1);
+      int resultStrLen = const_str.length();
+      int arg1StrLen = arg1_str.length();
+      if (resultStrLen < arg1StrLen) {
+        // negate
+        addAxiom(t, Z3_mk_not(ctx, Z3_mk_eq(ctx, newConcat, constStr)), __LINE__);
+        return;
+      } else {
+        int varStrLen = resultStrLen - arg1StrLen;
+        std::string firstPart = const_str.substr(0, arg1StrLen);
+        std::string secondPart = const_str.substr(arg1StrLen, varStrLen);
+        if (arg1_str != firstPart) {
+          // negate
+          Z3_ast negateAst = Z3_mk_not(ctx, Z3_mk_eq(ctx, newConcat, constStr));
+          addAxiom(t, negateAst, __LINE__);
+          return;
+        } else {
+          Z3_ast tmpStrConst = my_mk_str_value(t, secondPart.c_str());
+          Z3_ast implyL = Z3_mk_eq(ctx, newConcat, constStr);
+          Z3_ast implyR = Z3_mk_eq(ctx, arg2, tmpStrConst);
+          addAxiom(t, Z3_mk_implies(ctx, implyL, implyR), __LINE__);
+        }
+      }
+    }
+    //---------------------------------------------------------------------
+    // (4) Concat(var, var) = const_Str
+    //     Only when arg1 and arg2 do not have eq constant string values
+    //---------------------------------------------------------------------
+    else {
+      if (Concat(t, arg1, arg2) == NULL) {
+        int arg1Len = getLenValue(t, arg1);
+        int arg2Len = getLenValue(t, arg2);
+        int concatStrLen = const_str.length();
+#ifdef DEBUGLOG
+        __debugPrint(logFile, "  >> Len( ");
+        printZ3Node(t, concatAst);
+        __debugPrint(logFile, " ) = %d\n", getLenValue(t, concatAst));
+        __debugPrint(logFile, "    -> Len( ");
+        printZ3Node(t, arg1);
+        __debugPrint(logFile, " ) = %d\n", getLenValue(t, arg1));
+        __debugPrint(logFile, "    -> Len( ");
+        printZ3Node(t, arg2);
+        __debugPrint(logFile, " ) = %d\n", getLenValue(t, arg2));
+
+        __debugPrint(logFile, "  >> Len( ");
+        printZ3Node(t, constStr);
+        __debugPrint(logFile, " ) = %d\n\n", getLenValue(t, constStr));
+#endif
+
+        if (arg1Len != -1 || arg2Len != -1) {
+          Z3_ast ax_l1 = Z3_mk_eq(ctx, concatAst, constStr);
+          Z3_ast ax_l2 = NULL;
+
+          std::string prefixStr;
+          std::string suffixStr;
+          if (arg1Len != -1) {
+            if (arg1Len < 0) {
+              __debugPrint(logFile, "[Length conflict]  arg1Len = %d, concatStrLen = %d @ %d\n", arg1Len,  concatStrLen, __LINE__);
+              Z3_ast toAss1 = Z3_mk_ge(ctx, mk_length(t, arg1), mk_int(ctx, 0));
+              addAxiom(t, toAss1, __LINE__);
+              return;
+            } else if (arg1Len > concatStrLen) {
+              __debugPrint(logFile, "[Length conflict]  arg1Len = %d, concatStrLen = %d @ %d\n", arg1Len,  concatStrLen, __LINE__);
+              Z3_ast toAss1 = Z3_mk_implies(ctx, ax_l1, Z3_mk_le(ctx, mk_length(t, arg1), mk_int(ctx, concatStrLen)));
+              addAxiom(t, toAss1, __LINE__);
+              return;
+            }
+
+            prefixStr = const_str.substr(0, arg1Len);
+            suffixStr = const_str.substr(arg1Len, concatStrLen - arg1Len);
+            ax_l2 = Z3_mk_eq(ctx, mk_length(t, arg1), mk_int(ctx, arg1Len));
+          } else {
+            // arg2's length is available
+            if (arg2Len < 0) {
+              __debugPrint(logFile, "[Length conflict]  arg2Len = %d, concatStrLen = %d @ %d\n", arg2Len,  concatStrLen, __LINE__);
+              Z3_ast toAss1 = Z3_mk_ge(ctx, mk_length(t, arg2), mk_int(ctx, 0));
+              addAxiom(t, toAss1, __LINE__);
+              return;
+            } else if (arg2Len > concatStrLen) {
+              __debugPrint(logFile, "[Length conflict]  arg2Len = %d, concatStrLen = %d @ %d\n", arg2Len,  concatStrLen, __LINE__);
+              Z3_ast toAss1 = Z3_mk_implies(ctx, ax_l1, Z3_mk_le(ctx, mk_length(t, arg2), mk_int(ctx, concatStrLen)));
+              addAxiom(t, toAss1, __LINE__);
+              return;
+            }
+
+            prefixStr = const_str.substr(0, concatStrLen - arg2Len);
+            suffixStr = const_str.substr(concatStrLen - arg2Len, arg2Len);
+            ax_l2 = Z3_mk_eq(ctx, mk_length(t, arg2), mk_int(ctx, arg2Len));
+          }
+
+          // consistency check
+          if (isConcatFunc(t, arg1) && canConcatEqStr(t, arg1, prefixStr) == 0) {
+            // inconsistency found, need to backtrack
+            Z3_ast ax_r = Z3_mk_not(ctx, ax_l2);
+            addAxiom(t, Z3_mk_implies(ctx, ax_l1, ax_r), __LINE__);
+            return;
+          }
+          if (isConcatFunc(t, arg2) && canConcatEqStr(t, arg2, suffixStr) == 0) {
+            // inconsistency found, need to backtrack
+            Z3_ast ax_r = Z3_mk_not(ctx, ax_l2);
+            addAxiom(t, Z3_mk_implies(ctx, ax_l1, ax_r), __LINE__);
+            return;
+          }
+
+          Z3_ast r_items[3];
+          r_items[0] = Z3_mk_eq(ctx, arg1, my_mk_str_value(t, prefixStr.c_str()));
+          r_items[1] = Z3_mk_eq(ctx, arg2, my_mk_str_value(t, suffixStr.c_str()));
+          int r_count = 2;
+          if (arg1Len == -1) {
+            r_items[2] = Z3_mk_eq(ctx, mk_length(t, arg1), mk_int(ctx, prefixStr.size()));
+            r_count++;
+          }
+          else if (arg2Len == -1) {
+            r_items[2] = Z3_mk_eq(ctx, mk_length(t, arg2), mk_int(ctx, suffixStr.size()));
+            r_count++;
+          }
+
+          addAxiom(t, Z3_mk_implies(ctx, mk_2_and(t, ax_l1, ax_l2), Z3_mk_and(ctx, r_count, r_items)), __LINE__);
+        } else {
+          Z3_ast xorFlag = NULL;
+          std::pair<Z3_ast, Z3_ast> key1(arg1, arg2);
+          std::pair<Z3_ast, Z3_ast> key2(arg2, arg1);
+          if (varForBreakConcat.find(key1) == varForBreakConcat.end() && varForBreakConcat.find(key2) == varForBreakConcat.end()) {
+            xorFlag = mk_internal_xor_var(t);
+            varForBreakConcat[key1][0] = xorFlag;
+          } else {
+            if (varForBreakConcat.find(key1) != varForBreakConcat.end()) {
+              xorFlag = varForBreakConcat[key1][0];
+            } else {
+              xorFlag = varForBreakConcat[key2][0];
+            }
+          }
+
+          int concatStrLen = const_str.length();
+          int xor_pos = 0;
+          int and_count = 1;
+          Z3_ast * xor_items = new Z3_ast[concatStrLen + 1];
+          Z3_ast * and_items = new Z3_ast[4 * (concatStrLen + 1) + 1];
+          Z3_ast arg1_eq = NULL;
+          Z3_ast arg2_eq = NULL;
+          for (int i = 0; i < concatStrLen + 1; i++) {
+            std::string prefixStr = const_str.substr(0, i);
+            std::string suffixStr = const_str.substr(i, concatStrLen - i);
+
+            // skip invalidate options
+            if (isConcatFunc(t, arg1) && canConcatEqStr(t, arg1, prefixStr) == 0) {
+              continue;
+            }
+            if (isConcatFunc(t, arg2) && canConcatEqStr(t, arg2, suffixStr) == 0) {
+              continue;
+            }
+
+            Z3_ast xorAst = Z3_mk_eq(ctx, xorFlag, mk_int(ctx, xor_pos));
+            xor_items[xor_pos++] = xorAst;
+
+            Z3_ast prefixAst = my_mk_str_value(t, prefixStr.c_str());
+            arg1_eq = Z3_mk_eq(ctx, arg1, prefixAst);
+            and_items[and_count++] = Z3_mk_eq(ctx, xorAst, arg1_eq);
+
+            Z3_ast suffixAst = my_mk_str_value(t, suffixStr.c_str());
+            arg2_eq = Z3_mk_eq(ctx, arg2, suffixAst);
+            and_items[and_count++] = Z3_mk_eq(ctx, xorAst, arg2_eq);
+          }
+
+          Z3_ast implyL = Z3_mk_eq(ctx, concatAst, constStr);
+          Z3_ast implyR1 = NULL;
+          if (xor_pos == 0) {
+            // negate
+            Z3_ast negateAst = Z3_mk_not(ctx, Z3_mk_eq(ctx, concatAst, constStr));
+            addAxiom(t, negateAst, __LINE__);
+          } else {
+            if (xor_pos == 1) {
+              and_items[0] = xor_items[0];
+              implyR1 = Z3_mk_and(ctx, and_count, and_items);
+            } else {
+              and_items[0] = Z3_mk_or(ctx, xor_pos, xor_items);
+              implyR1 = Z3_mk_and(ctx, and_count, and_items);
+            }
+            Z3_ast implyToAssert = Z3_mk_implies(ctx, implyL, implyR1);
+            addAxiom(t, implyToAssert, __LINE__);
+          }
+          delete[] xor_items;
+          delete[] and_items;
+        }
+      }
     }
   }
 }
+
 

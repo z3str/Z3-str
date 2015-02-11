@@ -1,0 +1,16 @@
+(declare-variable x String)
+(declare-variable y String)
+(declare-variable m String)
+(declare-variable n String)
+
+(assert (= (Concat x y) (Concat m n) ) )
+
+(assert (RegexIn n (RegexStar (Str2Reg "abc") ) ) )
+
+(assert (= (Length x) (Length m) ) )
+
+
+
+(check-sat)
+(get-model)
+

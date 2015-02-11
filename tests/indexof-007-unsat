@@ -1,0 +1,10 @@
+(declare-variable i Int)
+(declare-variable X String)
+
+(assert (= i (Indexof X "ab") ) )
+(assert (= i 0 ) )
+(assert (= (Length X) 0 ) )
+
+
+(check-sat)
+(get-model)

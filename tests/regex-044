@@ -1,0 +1,30 @@
+(declare-variable x String)
+(declare-variable y String)
+(declare-variable m String)
+(declare-variable n String)
+
+
+
+(assert (RegexIn x (RegexStar (RegexDigit "") ) ) )
+
+(assert (= 5 (Length x) ) )
+
+(assert (not (= x "1") ) )
+(assert (not (= x "0") ) )
+(assert (not (= x "3") ) )
+(assert (not (= x "2") ) )
+(assert (not (= x "8") ) )
+(assert (not (= x "5") ) )
+(assert (not (= x "6") ) )
+(assert (not (= x "4") ) )
+(assert (not (= x "9") ) )
+(assert (not (= x "7") ) )
+
+
+
+
+
+
+(check-sat)
+(get-model)
+

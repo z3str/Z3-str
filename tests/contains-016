@@ -1,0 +1,22 @@
+(declare-variable x1 String)
+(declare-variable x2 String)
+(declare-variable y1 String)
+(declare-variable y2 String)
+(declare-variable z1 String)
+(declare-variable z2 String)
+
+(declare-variable b1 bool)
+(declare-variable b2 bool)
+(declare-variable b3 bool)
+
+
+(assert (= b1 (Contains x1 y1 ) ) )
+
+(assert (= x1 "123abc123") )
+
+(assert (= y1 "abc") )
+
+(assert b1)
+
+(check-sat)
+(get-model)

@@ -1,0 +1,11 @@
+(declare-variable str String)
+(declare-variable x String)
+(declare-variable var2 Int)
+(declare-variable var3 Int)
+
+(assert (= x (CharAt str var2) ) )
+(assert (< var2 0))
+
+
+(check-sat)
+(get-model)

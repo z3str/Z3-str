@@ -1,0 +1,8 @@
+(declare-variable i Int)
+(declare-variable X String)
+
+(assert (= i (LastIndexof X "abcd") ) )
+(assert (= X "abcd1234abcd" ) )
+
+(check-sat)
+(get-model)

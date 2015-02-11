@@ -1,0 +1,10 @@
+(declare-variable aPosition Int)
+(declare-variable secondPos Int)
+(declare-variable aURL String)
+
+(assert (= "http://www.tizag.com/www.html" aURL) )
+(assert (= secondPos (Indexof2  aURL  "www" (- 0 10) ) ) )
+
+
+(check-sat)
+(get-model)

@@ -1,0 +1,10 @@
+(declare-variable i1 Int)
+(declare-variable i2 Int)
+(declare-variable Str1 String)
+(declare-variable Str2 String)
+
+(assert (= i1 (Indexof2 "abc" "b" i2) ) )
+(assert (= i2 i1))
+
+(check-sat)
+(get-model)

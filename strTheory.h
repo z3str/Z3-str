@@ -46,14 +46,14 @@ extern bool loopDetected;
 
 extern std::map<char, int> charSetLookupTable;
 
-extern std::map<Z3_ast, Z3_ast> containsReduced_bool_str_map;
-extern std::map<Z3_ast, Z3_ast> containsReduced_bool_subStr_map;
+//key: pair<str, substr>, value: boolVar
+extern std::map<std::pair<Z3_ast, Z3_ast>, Z3_ast> containPairBoolMap;
+
+//key: pair<strVar, string>, value: boolVar
+extern std::map<std::pair<Z3_ast, std::string>, Z3_ast> regexInBoolMap;
+extern std::map<Z3_ast, std::set<std::string> > regexInVarRegStrMap;
 
 extern std::map<std::pair<Z3_ast, Z3_ast>, std::map<int, Z3_ast> > varForBreakConcat;
-
-//extern std::map<Z3_ast, Z3_ast> var2RegexMap;
-//extern std::map<Z3_ast, Z3_ast> regex2VarMap;
-
 
 //--------------------------------------------------
 
@@ -69,10 +69,13 @@ typedef struct _PATheoryData
     Z3_func_decl Length;
     Z3_func_decl SubString;
     Z3_func_decl Indexof;
+    Z3_func_decl Indexof2;
     Z3_func_decl StartsWith;
     Z3_func_decl EndsWith;
     Z3_func_decl Contains;
     Z3_func_decl Replace;
+    Z3_func_decl LastIndexof;
+    Z3_func_decl CharAt;
 
     Z3_func_decl Str2Reg;
     Z3_func_decl RegexStar;
@@ -80,15 +83,23 @@ typedef struct _PATheoryData
     Z3_func_decl RegexUnion;
     Z3_func_decl RegexConcat;
     Z3_func_decl Unroll;
+
+    Z3_func_decl RegexAlpha;
+    Z3_func_decl RegexDigit;
+    Z3_func_decl RegexAlnum;
+
+    Z3_func_decl RegexWord;
+    Z3_func_decl RegexUpper;
+    Z3_func_decl RegexLower;
 } PATheoryData;
 
 
 typedef enum
 {
   my_Z3_ConstStr,    // 0
-  my_Z3_ConstBool,   //
-  my_Z3_Func,        //
-  my_Z3_Num,         //
+  my_Z3_ConstBool,   // 1
+  my_Z3_Func,        // 2
+  my_Z3_Num,         // 3
   my_Z3_Var,         //
   my_Z3_Str_Var,     //
   my_Z3_Int_Var,     //
@@ -121,6 +132,8 @@ Z3_ast my_mk_internal_string_var(Z3_theory t);
 Z3_ast my_mk_nonEmpty_string_var(Z3_theory t);
 
 Z3_ast my_mk_internal_int_var(Z3_theory t);
+
+Z3_ast my_mk_internal_bool_var(Z3_theory t);
 
 Z3_ast mk_internal_xor_var(Z3_theory t);
 
@@ -159,8 +172,6 @@ void print_eq_class(Z3_theory t, Z3_ast n);
 
 void __printZ3Node(Z3_theory t, Z3_ast node);
 
-void print_relevant_length(Z3_theory t, std::map<Z3_ast, int> & wanted);
-
 void print_All_Eqc(Z3_theory t);
 
 void printStrArgLen(Z3_theory t, Z3_ast node, int ll = 0);
@@ -192,11 +203,15 @@ Z3_ast get_eqc_unrollFunc(Z3_theory t, Z3_ast n);
 
 std::string getConstStrValue(Z3_theory t, Z3_ast n);
 
+int getConstIntValue(Z3_theory t, Z3_ast n);
+
 int getLenValue(Z3_theory t, Z3_ast n);
 
 int getIntValue(Z3_theory t, Z3_ast n, bool & hasValue);
 
 void checkandInit_cutVAR(Z3_theory t, Z3_ast node);
+
+Z3_ast registerContain(Z3_theory t, Z3_ast str, Z3_ast subStr);
 
 Z3_ast Concat(Z3_theory t, Z3_ast n1, Z3_ast n2);
 
@@ -213,6 +228,8 @@ Z3_ast simplifyConcat(Z3_theory t, Z3_ast node);
 void simplifyConcatEq(Z3_theory t, Z3_ast nn1, Z3_ast nn2, int duplicateCheck = 1);
 
 void processUnrollEqConstStr(Z3_theory t, Z3_ast unrollFunc, Z3_ast eqcStr);
+
+void processConcatEqUnroll(Z3_theory t, Z3_ast concat, Z3_ast unroll);
 
 int newEqCheck(Z3_theory t, Z3_ast nn1, Z3_ast nn2);
 
@@ -234,6 +251,8 @@ std::string encodeToEscape(char c);
 Z3_bool cb_reduce_eq(Z3_theory t, Z3_ast s_1, Z3_ast s_2, Z3_ast * r);
 
 void checkInputVar(Z3_theory t, Z3_ast node);
+
+Z3_ast collectEqNodes(Z3_theory t, Z3_ast n, std::set<Z3_ast> & eqcSet);
 
 void cb_init_search(Z3_theory t);
 
@@ -291,7 +310,7 @@ int canConcatEqStr(Z3_theory t, Z3_ast concat, std::string str);
 
 int canConcatEqConcat(Z3_theory t, Z3_ast concat1, Z3_ast concat2);
 
-void doubleCheckForNotContain(Z3_theory t);
+void checkContainInNewEq(Z3_theory t, Z3_ast n1, Z3_ast n2);
 
 void pa_theory_example();
 
@@ -300,6 +319,8 @@ bool consistCheckRegex(Z3_theory t, Z3_ast nn1, Z3_ast nn2);
 void get_eqc_simpleUnroll(Z3_theory t, Z3_ast n, Z3_ast & constStr, std::set<Z3_ast> & unrollFuncSet);
 
 void get_eqc_allUnroll(Z3_theory t, Z3_ast n, Z3_ast & constStr, std::set<Z3_ast> & unrollFuncSet);
+
+std::string getStdRegexStr(Z3_theory t, Z3_ast regex);
 
 Z3_ast genAssignUnrollStr2Reg(Z3_theory t, Z3_ast n, std::set<Z3_ast> & unrolls);
 

@@ -1,0 +1,14 @@
+(declare-variable x String)
+(declare-variable y String)
+(declare-variable m String)
+(declare-variable n String)
+
+
+
+(assert (not (RegexIn x (RegexStar (Str2Reg "abc") ) ) ) )
+(assert (= x "abc") )
+
+
+(check-sat)
+(get-model)
+
