@@ -5,7 +5,7 @@ observed in many existing solvers that encode strings in terms of other primitiv
 
 
 # Documentations:
--------------
+
 Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.google.com/site/z3strsolver/)
 
 
@@ -13,7 +13,6 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
 
 
 # Install Z3-str2
--------------
 
 1. Check out the latest version of Z3-str2 from the git repo.
 
