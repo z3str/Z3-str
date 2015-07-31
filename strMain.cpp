@@ -52,7 +52,6 @@ int main(int argc, char ** argv)
         }
     }
 #ifdef DEBUGLOG
-    printf("Input File: %s\n\n", inputFile.c_str());
     __debugPrint(logFile, "Input file: %s\n\n", inputFile.c_str());
 #endif
 

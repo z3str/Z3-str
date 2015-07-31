@@ -27,6 +27,25 @@ Z3_ast mk_regexRepVar(Z3_theory t) {
 
 
 /*
+ *
+ */
+std::string str2RegexStr(std::string str) {
+  std::string res = "";
+  int len = str.size();
+  for (int i = 0; i < len; i++) {
+    char nc = str[i];
+    // 12 special chars
+    if (nc == '\\' || nc == '^' || nc == '$' || nc == '.' || nc == '|' || nc == '?'
+        || nc == '*' || nc == '+' || nc == '(' || nc == ')' || nc == '[' || nc == '{') {
+      res.append(1, '\\');
+    }
+    res.append(1, str[i]);
+  }
+  return res;
+}
+
+
+/*
  * Collect simple unroll functions (the core is str2Reg)
  * and constant string in eqc of node n
  */
@@ -86,7 +105,7 @@ std::string getStdRegexStr(Z3_theory t, Z3_ast regex) {
   Z3_func_decl regexFuncDecl = Z3_get_app_decl(ctx, Z3_to_app(ctx, regex));
   if (regexFuncDecl == td->Str2Reg) {
     Z3_ast regAst = Z3_get_app_arg(ctx, Z3_to_app(ctx, regex), 0);
-    std::string regStr = getConstStrValue(t, regAst);
+    std::string regStr = str2RegexStr(getConstStrValue(t, regAst));
     return regStr;
   } else if (regexFuncDecl == td->RegexConcat) {
     Z3_ast reg1Ast = Z3_get_app_arg(ctx, Z3_to_app(ctx, regex), 0);

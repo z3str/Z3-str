@@ -3,6 +3,7 @@
 
 bool defaultCharSet = true;
 
+
 /*
  *
  */
@@ -19,6 +20,7 @@ std::string encodeToEscape(char c) {
 /*
  *
  */
+
 void setAlphabet() {
   if (defaultCharSet) {
     charSetSize = 256;
@@ -27,55 +29,55 @@ void setAlphabet() {
     // small letters
     for (int i = 97; i < 123; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // caps
     for (int i = 65; i < 91; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // numbers
     for (int i = 48; i < 58; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // printable marks - 1
     for (int i = 32; i < 48; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // printable marks - 2
     for (int i = 58; i < 65; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // printable marks - 3
     for (int i = 91; i < 97; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // printable marks - 4
     for (int i = 123; i < 127; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // non-printable - 1
     for (int i = 0; i < 32; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
     // non-printable - 2
     for (int i = 127; i < 256; i++) {
       charSet[idx] = (char) i;
-      charSetLookupTable[charSet[idx]] = 1;
+      charSetLookupTable[charSet[idx]] = idx;
       idx++;
     }
   } else {
@@ -86,7 +88,7 @@ void setAlphabet() {
     charSetSize = fSize;
     for (int i = 0; i < charSetSize; i++) {
       charSet[i] = setset[i];
-      charSetLookupTable[setset[i]] = 1;
+      charSetLookupTable[setset[i]] = i;
     }
   }
 }
@@ -163,6 +165,11 @@ std::string convertInputTrickyConstStr(std::string inputStr) {
 Z3_ast reduce_contains(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert) {
   Z3_context ctx = Z3_theory_get_context(t);
   Z3_ast reduceAst = NULL;
+
+  if (args[0] == args[1]) {
+    return Z3_mk_true(ctx);
+  }
+
   if (getNodeType(t, args[0]) == my_Z3_ConstStr && getNodeType(t, args[1]) == my_Z3_ConstStr) {
     std::string arg0Str = getConstStrValue(t, args[0]);
     std::string arg1Str = getConstStrValue(t, args[1]);
@@ -535,14 +542,20 @@ Z3_ast reduce_replace(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert
  */
 Z3_ast reduce_subStr(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert) {
   Z3_context ctx = Z3_theory_get_context(t);
+
   Z3_ast ts0 = my_mk_internal_string_var(t);
   Z3_ast ts1 = my_mk_internal_string_var(t);
   Z3_ast ts2 = my_mk_internal_string_var(t);
+
+  Z3_ast ts0ContainsTs1 = registerContain(t, args[0], ts1);
+
   Z3_ast and_item[4];
-  and_item[0] = Z3_mk_eq(ctx, args[0], mk_concat(t, ts0, mk_concat(t, ts1, ts2)));
-  and_item[1] = Z3_mk_eq(ctx, args[1], mk_length(t, ts0));
-  and_item[2] = Z3_mk_eq(ctx, args[2], mk_length(t, ts1));
-  breakdownAssert = Z3_mk_and(ctx, 3, and_item);
+  and_item[0] = ts0ContainsTs1;
+  and_item[1] = Z3_mk_eq(ctx, args[0], mk_concat(t, ts0, mk_concat(t, ts1, ts2)));
+  and_item[2] = Z3_mk_eq(ctx, args[1], mk_length(t, ts0));
+  and_item[3] = Z3_mk_eq(ctx, args[2], mk_length(t, ts1));
+
+  breakdownAssert = Z3_mk_and(ctx, 4, and_item);
   return ts1;
 }
 
@@ -575,6 +588,29 @@ Z3_ast reduce_regexStar(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert) 
 /*
  *
  */
+Z3_ast reduce_regexPlus(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert) {
+  Z3_context ctx = Z3_theory_get_context(t);
+  PATheoryData * td = (PATheoryData*) Z3_theory_get_ext_data(t);
+  Z3_app childFuncApp = Z3_to_app(ctx, args[0]);
+  Z3_func_decl childFuncDecl = Z3_get_app_decl(ctx, childFuncApp);
+  if (childFuncDecl == td->RegexPlus) {
+    // (r+)+ --> r+
+    return args[0];
+  } else if (childFuncDecl == td->RegexStar) {
+    // (r*)+ --> r*
+    Z3_ast childArg0  = Z3_get_app_arg(ctx, childFuncApp, 0);
+    return mk_1_arg_app(ctx, td->RegexStar, childArg0);
+  } else {
+    // r+ --> RegexConcat(r, r*)
+    return mk_2_arg_app(ctx, td->RegexConcat, args[0],  mk_1_arg_app(ctx, td->RegexStar, args[0]));
+  }
+}
+
+
+
+/*
+ *
+ */
 Z3_ast reduce_regexConcat(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert) {
   Z3_context ctx = Z3_theory_get_context(t);
   PATheoryData * td = (PATheoryData*) Z3_theory_get_ext_data(t);
@@ -595,23 +631,48 @@ Z3_ast reduce_regexConcat(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert
 /*
  *
  */
-Z3_ast reduce_regexDigit(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert) {
+Z3_ast reduce_regexCharRange(Z3_theory t, Z3_ast const args[], Z3_ast & extraAssert) {
   Z3_context ctx = Z3_theory_get_context(t);
   PATheoryData * td = (PATheoryData*) Z3_theory_get_ext_data(t);
-  int c = 57;
-  std::string cStr;
-  cStr.push_back((char)c);
-  Z3_ast res = mk_1_arg_app(ctx, td->Str2Reg, my_mk_str_value(t, cStr.c_str()));
-  c = c - 1;
-  for (; c >= 48; c--) {
-    cStr.clear();
-    cStr.push_back((char)c);
-    res = mk_2_arg_app(ctx, td->RegexUnion, mk_1_arg_app(ctx, td->Str2Reg, my_mk_str_value(t, cStr.c_str())), res);
+  if (isConstStr(t, args[0]) && isConstStr(t, args[1])) {
+    std::string arg0Value = getConstStrValue(t, args[0]);
+    std::string arg1Value = getConstStrValue(t, args[1]);
+    if (arg0Value.size() == 1 && arg1Value.size() == 1) {
+      char low = arg0Value[0];
+      char high = arg1Value[0];
+      if (low > high) {
+        char t = low;
+        low = high;
+        high = t;
+      }
+
+#ifdef DEBUGLOG
+      __debugPrint(logFile, ">> reduce_regexCharRange: arg0 = \"%s\", arg1 = \"%s\"\n", arg0Value.c_str(), arg1Value.c_str());
+      __debugPrint(logFile, "                          low = '%c', high = '%c'\n", low, high);
+#endif
+
+      char c = low;
+      std::string cStr;
+      cStr.push_back(c);
+      Z3_ast res = mk_1_arg_app(ctx, td->Str2Reg, my_mk_str_value(t, cStr.c_str()));
+      c++;
+      for (; c <= high; c++) {
+        cStr.clear();
+        cStr.push_back(c);
+        res = mk_2_arg_app(ctx, td->RegexUnion, mk_1_arg_app(ctx, td->Str2Reg, my_mk_str_value(t, cStr.c_str())), res);
+      }
+      return res;
+    } else {
+      printf("> Error: The argument of RegexCharRange should be constant strings of size 1.\n");
+      printf("         Found (RegexCharRange %s %s)\n", arg0Value.c_str(), arg1Value.c_str());
+    }
+
+  } else {
+    printf("> Error: The argument of RegexCharRange should be constant strings.\n");
+    printf("         Found (RegexCharRange %s %s)\n", Z3_ast_to_string(ctx, args[0]), Z3_ast_to_string(ctx, args[1]));
   }
-  return res;
+  exit(0);
 }
-
-
 
 
 /*
@@ -749,7 +810,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //---------------------------------
   // reduce app: Length
   //---------------------------------
-  if (d == td->Length) {
+  else if (d == td->Length) {
     if (getNodeType(t, convertedArgs[0]) == my_Z3_ConstStr) {
       int size = getConstStrValue(t, convertedArgs[0]).size();
       *result = mk_int(ctx, size);
@@ -772,11 +833,10 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
       }
     }
   }
-
   //---------------------------------
   // reduce app: SubString
   //---------------------------------
-  if (d == td->SubString) {
+  else if (d == td->SubString) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_subStr(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -801,7 +861,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: Contains
   //------------------------------------------
-  if (d == td->Contains) {
+  else if (d == td->Contains) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_contains(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -829,7 +889,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: StartsWith
   //------------------------------------------
-  if (d == td->StartsWith) {
+  else if (d == td->StartsWith) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_startswith(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -851,7 +911,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: EndsWith
   //------------------------------------------
-  if (d == td->EndsWith) {
+  else if (d == td->EndsWith) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_endswith(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -878,7 +938,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: Indexof
   //------------------------------------------
-  if (d == td->Indexof) {
+  else if (d == td->Indexof) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_indexof(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -906,7 +966,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: Indexof
   //------------------------------------------
-  if (d == td->Indexof2) {
+  else if (d == td->Indexof2) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_indexof2(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -937,7 +997,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: LastIndexof
   //------------------------------------------
-  if (d == td->LastIndexof) {
+  else if (d == td->LastIndexof) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_lastindexof(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -965,7 +1025,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: CharAt
   //------------------------------------------
-  if (d == td->CharAt) {
+  else if (d == td->CharAt) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_charAt(t, convertedArgs, breakDownAst);
 
@@ -995,7 +1055,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: Replace
   //------------------------------------------
-  if (d == td->Replace) {
+  else if (d == td->Replace) {
     Z3_ast breakDownAst = NULL;
     *result = reduce_replace(t, convertedArgs, breakDownAst);
 #ifdef DEBUGLOG
@@ -1024,7 +1084,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: Str2Reg
   //------------------------------------------
-  if (d == td->Str2Reg) {
+  else if (d == td->Str2Reg) {
 #ifdef DEBUGLOG
     __debugPrint(logFile, "\n>> cb_reduce_app(): Str2Reg(");
     printZ3Node(t, convertedArgs[0]);
@@ -1060,7 +1120,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: RegexConcat
   //------------------------------------------
-  if (d == td->RegexConcat) {
+  else if (d == td->RegexConcat) {
 #ifdef DEBUGLOG
     __debugPrint(logFile, "\n>> cb_reduce_app(): RegexConcat(");
     printZ3Node(t, convertedArgs[0]);
@@ -1093,7 +1153,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: RegexIn
   //------------------------------------------
-  if (d == td->RegexIn) {
+  else if (d == td->RegexIn) {
     Z3_ast otherAssert = NULL;
     Z3_ast tmpRes = NULL;
     tmpRes = reduce_regexIn(t, convertedArgs, otherAssert);
@@ -1110,8 +1170,9 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
     {
       __debugPrint(logFile, "-- ADD(@%d): \n", __LINE__);
       printZ3Node(t, otherAssert);
+      __debugPrint(logFile, "\n");
     }
-    __debugPrint(logFile, "\n\n");
+    __debugPrint(logFile, "\n");
 #endif
 
     delete[] convertedArgs;
@@ -1128,7 +1189,7 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
   //------------------------------------------
   // Reduce app: RegexStar
   //------------------------------------------
-  if (d == td->RegexStar) {
+  else if (d == td->RegexStar) {
     Z3_ast otherAssert = NULL;
 #ifdef DEBUGLOG
     __debugPrint(logFile, "\n>> cb_reduce_app(): RegexStar(");
@@ -1156,14 +1217,47 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
     }
     return Z3_FALSE;
   }
-
-  if (d == td->RegexDigit) {
+  //------------------------------------------
+  // Reduce app: RegexPlus
+  //------------------------------------------
+  else if (d == td->RegexPlus) {
     Z3_ast otherAssert = NULL;
 #ifdef DEBUGLOG
-    __debugPrint(logFile, "\n>> cb_reduce_app(): RegexDigit\n");
+    __debugPrint(logFile, "\n>> cb_reduce_app(): RegexPlus(");
+    printZ3Node(t, convertedArgs[0]);
+    __debugPrint(logFile, ") --> ");
+#endif
+    *result = reduce_regexPlus(t, convertedArgs, otherAssert);
+    delete[] convertedArgs;
+
+#ifdef DEBUGLOG
+    printZ3Node(t, *result);
+    if( otherAssert != NULL )
+    {
+      __debugPrint(logFile, "\n-- ADD(@%d): \n", __LINE__);
+      printZ3Node(t, otherAssert);
+    }
+    __debugPrint(logFile, "\n\n");
 #endif
 
-    *result = reduce_regexDigit(t, convertedArgs, otherAssert);
+    if (*result != NULL) {
+      if (otherAssert != NULL) {
+        Z3_assert_cnstr(ctx, otherAssert);
+      }
+      return Z3_TRUE;
+    }
+    return Z3_FALSE;
+  }
+  //------------------------------------------
+  // Reduce app: RegexRange
+  //------------------------------------------
+  else if (d == td->RegexCharRange) {
+    Z3_ast otherAssert = NULL;
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "\n>> cb_reduce_app(): RegexCharRange\n");
+#endif
+
+    *result = reduce_regexCharRange(t, convertedArgs, otherAssert);
     delete[] convertedArgs;
 
 #ifdef DEBUGLOG
@@ -1182,6 +1276,18 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
       return Z3_TRUE;
     }
     return Z3_FALSE;
+  }
+
+
+  if (convertedFlag == 1) {
+    *result = Z3_mk_app(ctx, d, n, convertedArgs);
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "\n>> cb_reduce_app(): Others --> ");
+    printZ3Node(t, *result);
+    __debugPrint(logFile, "\n\n");
+#endif
+    delete[] convertedArgs;
+    return Z3_TRUE;
   }
 
 

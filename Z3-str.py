@@ -18,6 +18,7 @@ solver = ""
 tmpEncodingDir = "/tmp/z3_str_convert"
 clearTempFile = 1
 checkAnswer = 1
+tmpStrVarCnt = 0
 #=================================================================== 
 
 encodeDict = {
@@ -111,6 +112,15 @@ def encodeConstStr(constStr):
   return result
 
 
+def collectType(tt):
+  global varTypeDict
+  tt = ' '.join(tt.split())
+  varName = tt[0:tt.find(' ')].strip()
+  varType = tt[tt.find(' ') + 1: ].strip().lower()
+  varTypeDict[varName] = varType  
+  
+  
+
 def convert(org_file, convertedOriginalFile):  
   global varTypeDict
   global fileContent
@@ -147,27 +157,23 @@ def convert(org_file, convertedOriginalFile):
       # collect types of variables
       tt = line[1:-1].lstrip()
       tt = tt[tt.find("declare-variable") + 16:].strip()      
-      varName = tt[0:tt.find(' ')].strip()
-      varType = tt[tt.find(' ') + 1: ].strip().lower()
-      varTypeDict[varName] = varType      
-      continue 
+      collectType(tt)
+      continue
     
     elif line.find("declare-const") != -1:
       # collect types of variables
       tt = line[1:-1].lstrip()
       tt = tt[tt.find("declare-const") + 13:].strip()
-      varName = tt[0:tt.find(' ')].strip()
-      varType = tt[tt.find(' ') + 1: ].strip().lower()
-      varTypeDict[varName] = varType
+      collectType(tt)
+      
     
     elif line.find("declare-fun") != -1 :
       # collect types of variables
       tt = line[1:-1].lstrip()
       tt = tt[tt.find("declare-fun") + 11:].strip()
       tt = tt[:tt.find('(')] + tt[tt.find(')') + 1:]
-      varName = tt[0:tt.find(' ')].strip()
-      varType = tt[tt.find(' ') + 1: ].strip().lower()
-      varTypeDict[varName] = varType      
+      collectType(tt)
+      
     
     # ------------------------------------
     # start: processing const string
@@ -209,7 +215,7 @@ def convert(org_file, convertedOriginalFile):
   output_str = ""
   for strv in declared_string_var:
     output_str = output_str + strv + "\n"  
-  output_str = output_str + '\n'  
+  output_str = output_str + '\n'
   for str_const in declared_string_const:
     output_str = output_str + '(declare-const ' + str_const + ' String)\n'    
   output_str = output_str + '\n'
@@ -218,8 +224,6 @@ def convert(org_file, convertedOriginalFile):
   f_n = open(convertedOriginalFile, 'w')
   f_n.write(output_str)        
   f_n.close()  
-  
-
   
 
 def processOutput(output):
@@ -232,7 +236,6 @@ def processOutput(output):
       if line.strip().startswith("(error "):
         res = res + line + "\n"
     return res, 1
-
   elif output.find("> Error:") != -1:
     return output, 1
 
@@ -242,7 +245,7 @@ def processOutput(output):
   for line in lines:
     if line.strip() == "":
       continue
-    elif line.startswith('$$_'):
+    elif line.startswith('$$'):
       continue
     elif line.startswith('unique-value!'):
       continue    
@@ -250,7 +253,6 @@ def processOutput(output):
       result.append(line)
       result.append("\n")
       continue    
-    
     elif line.find(" -> ") != -1:   
       result.append(line)
       result.append("\n")
@@ -260,13 +262,159 @@ def processOutput(output):
       varName = varSec[0].strip()
       varType = varSec[1].strip()
       value = fields[1].strip()
-      if varType == "string":
-        varSolution[varName] = value[1:-1]
-      else:
-        varSolution[varName] = value
-        
+      varSolution[varName] = value
   return ''.join(result), 0
 
+
+
+def genSimpValue(vType, vValue):
+  if vType == "string":
+    return vValue    
+  elif vType == "bool":
+    if vValue == "true":
+      return "true"
+    else:
+      return "false"
+  elif vType == "int":
+    intv = int(vValue)
+    if intv < 0:
+      return "(- 0 %d" % (-intv) + ")"
+    else:
+      return "%d" % intv
+  else:
+    return vValue
+
+
+
+def isArrayType(typeStr):
+  if typeStr.find("(array ") != -1:
+    return True
+  if typeStr.find(" array ") != -1:
+    return True
+  return False
+
+
+
+def topLevelSplit(strVal, c):
+  strVal = strVal.strip() 
+  res = []
+  parenthesis = []
+  openQuote = False
+  idx = 0
+  while idx < len(strVal):
+    if (strVal[idx] == c) and (len(parenthesis) == 0) and (not openQuote):
+      res.append(strVal[:idx].strip())
+      strVal = strVal[idx + 1 : ].strip()
+      idx = 0  # start over. Should skip idx++
+      continue 
+    elif strVal[idx] == "\"":
+      if idx == 0:
+        openQuote = not openQuote
+      else:
+        if strVal[idx - 1] != "\\":
+          openQuote = not openQuote
+    elif (not openQuote) and (strVal[idx] == "(") or (strVal[idx] == "["):
+      parenthesis.append(strVal[idx])
+    elif (not openQuote) and (strVal[idx] == ")"):
+      if parenthesis[len(parenthesis) - 1] == "(":
+        parenthesis.pop()
+    elif (not openQuote) and (strVal[idx] == "]"):
+      if parenthesis[len(parenthesis) - 1] == "[":
+        parenthesis.pop()
+      
+    idx = idx + 1
+    
+  res.append(strVal)
+  return res
+  
+
+
+def getArrayType(vType):
+  if not (vType[0] == "(" and vType[len(vType) - 1] == ")"):
+    print "Array Type Error in Solution Parsing - 0: " + vType
+    sys.exit()
+    
+  vType = vType[1 : -1].strip()  
+  if not vType.startswith("array"):
+    print "Array Type Error in Solution Parsing - 1: " + vType
+    sys.exit()
+
+  newAsserts = []
+  res = topLevelSplit(vType[5:], " ")  
+  if len(res) != 2:
+    print "Array Type Error in Solution Parsing - 2: " + vType
+    sys.exit()
+  return (res[0], res[1])
+
+
+
+def flatIdxValValues(assign, vList, resList):
+  if not (assign.startswith("[") and assign.endswith("]")):
+    print "Array value error in solution parsing - 0: " + assign
+    sys.exit()
+
+  vaList = topLevelSplit(assign[1 : -1], ",") 
+
+  for kv in vaList:
+    res = topLevelSplit(kv, ":")
+    tmpList = vList[:] # make a copy
+    tmpList.append(res[0])
+    # value is an array, dig further
+    if res[1].startswith("["):
+      flatIdxValValues(res[1], tmpList, resList)
+    else:
+      tmpList.append(res[1])
+      resList.append(tmpList)
+
+
+
+def flatIdxValTypes(vType):
+  idxKeyTypeList = []
+  (idxType, valType) = getArrayType(vType)
+  
+  if isArrayType(idxType):
+    print "Array typed index is not supported yet. Exit"
+    sys.exit()
+  
+  idxKeyTypeList.append(idxType)
+  while isArrayType(valType):
+    (idxType, valType) = getArrayType(valType)
+    idxKeyTypeList.append(idxType)    
+  idxKeyTypeList.append(valType)
+  
+  return idxKeyTypeList
+
+
+  
+def genArrayVal(vType, aName, aValue):
+  global tmpStrVarCnt
+  newAsserts = []
+  
+  idxKeyTypeList = flatIdxValTypes(vType)
+  idxValValueList = []
+  flatIdxValValues(aValue, [], idxValValueList)
+  
+  for vv in idxValValueList:
+    if len(idxKeyTypeList) != len(vv):
+      print "Error: array idxVal inconsistent."
+      print "       flatIdxValType  = " + str(idxKeyTypeList)
+      print "       flatIdxValValue = " + str(vv) + "]\n"
+      sys.exit()
+    cnt = len(idxKeyTypeList) - 1
+    select = aName
+    for i in range(cnt):
+      t = idxKeyTypeList[i]
+      v = vv[i]
+      if t == "string":
+        tmpVar = "SeLeCt_IdX_StR_%d" % tmpStrVarCnt
+        tmpStrVarCnt = tmpStrVarCnt + 1
+        newAsserts.append("(declare-fun " + tmpVar + " () String)\n" + "(assert (= " + tmpVar + " " + v + ") )\n")
+        select = "(select " + select + " " + tmpVar + ")"
+      else:
+        select = "(select " + select + " " + genSimpValue(t, v) + ")"
+    res = "(assert (= " + select + " " + genSimpValue(idxKeyTypeList[cnt], vv[cnt]) + ") )\n"
+    newAsserts.append(res)
+  return newAsserts
 
 
 
@@ -275,15 +423,13 @@ def genSolAsserts():
   global varSolution
   result = []
   for name, value in varSolution.items():
-    if (varTypeDict[name] == "string" and value != '""'):
-      result.append("(assert (= " + name + " \"" + value + "\" ) )" + "\n")
-    elif varTypeDict[name] == "bool":
-      if value == "true":
-        result.append("(assert " + name + ")" + "\n")
-      else:
-        result.append("(assert (not " + name + "))" + "\n")
-    else:
-      result.append("(assert (= " + name + " " + value + "))" + "\n")
+    varType = varTypeDict[name]
+    if isArrayType(varType):
+      assertsList = genArrayVal(varType, name, value)
+      for asst in assertsList:
+        result.append(asst)
+    else:      
+      result.append("(assert (= " + name + " " + genSimpValue(varType, value) + ") )\n")      
   return ''.join(result)
   
   
@@ -345,9 +491,20 @@ if __name__ == '__main__':
     #   > SAT, verify the ansert
     #   > UNSAT/UNKNOWN, report
     # --------------------------------------------------
+    
+    start_time = time.time()
+    
     proc = subprocess.Popen(paras, stdout=PIPE, stderr=PIPE)
     child_pid = proc.pid
     (output, error) = proc.communicate()
+    
+    wallT1 = time.time() - start_time
+    
+    if error != "":
+      print error
+      print "Exit..."
+      sys.exit(0)
+    
     outStr, hasError = processOutput(output)
     
     if hasError == 1:      
@@ -377,38 +534,49 @@ if __name__ == '__main__':
       print "************************"
       print ">> UNKNOWN  (1)"
       print "************************" 
+      sys.stdout.write(">> etime(s) = %f\n\n" % wallT1)  
     elif outStr.find(">> SAT") != -1: 
-      ii = fileContent.find("(check-sat)")    
-      solutionAssert = genSolAsserts()
-      newInputStr = fileContent[ :ii - 1] + "\n\n\n" + solutionAssert + "\n\n" + fileContent[ii:]
-      verifyInputFilename = tmpEncodingDir + "/verify_" + fileName
-      convertedVerifyInputFilename = tmpEncodingDir + "/verify_conv_" + fileName 
-      f_n = open(verifyInputFilename, 'w')
-      f_n.write(newInputStr)        
-      f_n.close()
-      
-      convert(verifyInputFilename, convertedVerifyInputFilename)
-      paras = [solver, "-f", convertedVerifyInputFilename]
-      
-      # run the solver again, check the solution.
-      err1 = subprocess.check_output(paras, );
-      if err1.find(">> SAT") != -1:
-        print "* v-ok" 
-        sys.stdout.write(outStr)  
-        eclapse = (time.time() - start)
+      if outStr.find("(error ") != -1:
+        outStr = outStr.replace(">> SAT", "").replace("************************\n", "").replace("------------------------\n", "").replace("\n\n", "\n")
+        print "Error:\n------------------------\n" + outStr + "\n"
       else:
-        print "* v-fail"
-        print "************************"
-        print ">> UNKNOWN (2)"
-        print "************************"
-      if clearTempFile == 1:
-        if os.path.exists(verifyInputFilename):
-          os.remove(verifyInputFilename)
-        if os.path.exists(convertedVerifyInputFilename):
-          os.remove(convertedVerifyInputFilename)
-    else:
-      sys.stdout.write(outStr)  
-      eclapse = (time.time() - start)
+        ii = fileContent.find("(check-sat)")    
+        solutionAssert = genSolAsserts()
+        newInputStr = fileContent[ :ii - 1] + "\n\n\n" + solutionAssert + "\n\n" + fileContent[ii:]
+        verifyInputFilename = tmpEncodingDir + "/verify_" + fileName
+        convertedVerifyInputFilename = tmpEncodingDir + "/verify_conv_" + fileName 
+        f_n = open(verifyInputFilename, 'w')
+        f_n.write(newInputStr)        
+        f_n.close()
+        
+        convert(verifyInputFilename, convertedVerifyInputFilename)
+        paras = [solver, "-f", convertedVerifyInputFilename]
+        
+        # run the solver again, check the solution.
+        start_time2 = time.time()
+        err1 = subprocess.check_output(paras, );
+        wallT2 = time.time() - start_time2
+        if err1.find(">> SAT") != -1:
+          if err1.find("(error ") != -1:
+            err1 = err1.replace(">> SAT", "").replace("************************\n", "").replace("------------------------\n", "").replace("\n\n", "\n")
+            print "ERROR: Solution Verification Syntax\n------------------------\n" + err1 + "\n"
+          else:
+            print "* v-ok" 
+            sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % (wallT1 + wallT2))  
+        else:
+          print "* v-fail"
+          print "************************"
+          print ">> UNKNOWN (2)"
+          print "************************"
+          print ">> etime(s) = %f" % (wallT1 + wallT2)
+        if clearTempFile == 1:
+          if os.path.exists(verifyInputFilename):
+            os.remove(verifyInputFilename)
+          if os.path.exists(convertedVerifyInputFilename):
+            os.remove(convertedVerifyInputFilename)
+    else:      
+      sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % wallT1)  
+      
   except KeyboardInterrupt:
     os.kill(child_pid, signal.SIGTERM)
     #print "Interrupted by keyborad"

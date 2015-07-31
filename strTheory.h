@@ -32,7 +32,12 @@
   #define printZ3Node(t, n) {}
 #endif
 
-#define freeVarStep 3
+
+//#define tmpLog(_format, ...) { fprintf(stdout, (_format), ##__VA_ARGS__); }
+//#define logAst(t, n) {fprintf(stdout, "%s", Z3_ast_to_string(Z3_theory_get_context(t), n));}
+//#define tmpLog(_format, ...) { }
+//#define logAst(t, n) { }
+
 #define lcmUnrollStep 2
 
 extern char * charSet;
@@ -43,6 +48,7 @@ extern FILE * logFile;
 extern std::string inputFile;
 extern int sLevel;
 extern bool loopDetected;
+
 
 extern std::map<char, int> charSetLookupTable;
 
@@ -55,6 +61,7 @@ extern std::map<Z3_ast, std::set<std::string> > regexInVarRegStrMap;
 
 extern std::map<std::pair<Z3_ast, Z3_ast>, std::map<int, Z3_ast> > varForBreakConcat;
 
+extern std::set<Z3_ast> inputVarInLen;
 //--------------------------------------------------
 
 /**
@@ -79,18 +86,12 @@ typedef struct _PATheoryData
 
     Z3_func_decl Str2Reg;
     Z3_func_decl RegexStar;
+    Z3_func_decl RegexPlus;
+    Z3_func_decl RegexCharRange;
     Z3_func_decl RegexIn;
     Z3_func_decl RegexUnion;
     Z3_func_decl RegexConcat;
     Z3_func_decl Unroll;
-
-    Z3_func_decl RegexAlpha;
-    Z3_func_decl RegexDigit;
-    Z3_func_decl RegexAlnum;
-
-    Z3_func_decl RegexWord;
-    Z3_func_decl RegexUpper;
-    Z3_func_decl RegexLower;
 } PATheoryData;
 
 
@@ -100,12 +101,11 @@ typedef enum
   my_Z3_ConstBool,   // 1
   my_Z3_Func,        // 2
   my_Z3_Num,         // 3
-  my_Z3_Var,         //
-  my_Z3_Str_Var,     //
-  my_Z3_Int_Var,     //
-  my_Z3_Quantifier,  //
-  my_Z3_Regex_Var,   //
-  my_Z3_Unknown      //
+  my_Z3_Var,         // 4, boolean, bv, int varables
+  my_Z3_Str_Var,     // 5
+  my_Z3_Regex_Var,   // 8
+  my_Z3_Quantifier,  // 7
+  my_Z3_Unknown      // 9
 } T_myZ3Type;
 
 //--------------------------------------------------
@@ -193,7 +193,10 @@ bool isRegexUnion(Z3_theory t, Z3_ast n);
 
 bool isRegexConcat(Z3_theory t, Z3_ast n);
 
+Z3_ast genLenValOptionsForFreeVar(Z3_theory t, Z3_ast freeVar, Z3_ast lenTesterInCbEq, std::string lenTesterValue);
 
+Z3_ast genFreeVarOptions(Z3_theory t, Z3_ast freeVar, Z3_ast len_indicator, std::string len_valueStr, Z3_ast valTesterInCbEq,
+    std::string valTesterValueStr);
 
 T_myZ3Type getNodeType(Z3_theory t, Z3_ast n);
 
@@ -233,16 +236,13 @@ void processConcatEqUnroll(Z3_theory t, Z3_ast concat, Z3_ast unroll);
 
 int newEqCheck(Z3_theory t, Z3_ast nn1, Z3_ast nn2);
 
+void getConcatsInEqc(Z3_theory t, Z3_ast n, std::set<Z3_ast> & concats);
+
 void new_eq_handler(Z3_theory t, Z3_ast nn1, Z3_ast nn2);
 
 void cb_new_eq(Z3_theory t, Z3_ast n1, Z3_ast n2);
 
 int haveEQLength(Z3_theory t, Z3_ast n1, Z3_ast n2);
-
-Z3_ast genFreeVarOptions(Z3_theory t, Z3_ast freeVar, Z3_ast len_indicator, std::string indicatorStr,
-                                      Z3_ast valTesterInCbEq, std::string valTesterValueStr);
-
-Z3_ast genLenValOptionsForFreeVar(Z3_theory t, Z3_ast freeVar, Z3_ast lenTesterInCbEq, std::string lenTesterValue);
 
 Z3_bool cb_final_check(Z3_theory t);
 
