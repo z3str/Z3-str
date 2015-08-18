@@ -23,7 +23,8 @@ std::string encodeToEscape(char c) {
 
 void setAlphabet() {
   if (defaultCharSet) {
-    charSetSize = 256;
+    // a string in C notion cannot contain a char '\0'
+    charSetSize = 255;
     charSet = new char[charSetSize];
     int idx = 0;
     // small letters
@@ -69,7 +70,7 @@ void setAlphabet() {
       idx++;
     }
     // non-printable - 1
-    for (int i = 0; i < 32; i++) {
+    for (int i = 1; i < 32; i++) {
       charSet[idx] = (char) i;
       charSetLookupTable[charSet[idx]] = idx;
       idx++;
@@ -275,48 +276,32 @@ Z3_ast reduce_indexof(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert
     Z3_ast x2 = my_mk_internal_string_var(t);
     Z3_ast indexAst = my_mk_internal_int_var(t);
 
-    std::vector<Z3_ast> items;
+    // condAst = Contains(args[0], args[1])
+    Z3_ast condAst = registerContain(t, args[0], args[1]);
 
-    //  args[0] = x1 . args[1] . x2
-    Z3_ast eq1 = Z3_mk_eq(ctx, args[0], mk_concat(t, x1, mk_concat(t, args[1], x2)));
-    // arg0HasArg1 = Contains(args[0], args[1])
-    Z3_ast arg0HasArg1 = registerContain(t, args[0], args[1]);
-    items.push_back(Z3_mk_eq(ctx, arg0HasArg1, eq1));
-
-    Z3_ast condAst = arg0HasArg1;
     // -----------------------
     // true branch
     std::vector<Z3_ast> thenItems;
-    thenItems.push_back(Z3_mk_ge(ctx, indexAst, mk_int(ctx, 0)));
-    //  x1 doesn't contain args[1]
-    thenItems.push_back(Z3_mk_not(ctx, mk_contains(t, x1, args[1])));
+    //  args[0] = x1 . args[1] . x2
+    thenItems.push_back(Z3_mk_eq(ctx, args[0], mk_concat(t, x1, mk_concat(t, args[1], x2))));
+    //  indexAst = |x1|
     thenItems.push_back(Z3_mk_eq(ctx, indexAst, mk_length(t, x1)));
-    // args[0]  = x3 . x4 /\ |x3| = |x1| + |args[1]| - 1 /\ ! contains(x3, args[1])
+    //     args[0]  = x3 . x4
+    //  /\ |x3| = |x1| + |args[1]| - 1
+    //  /\ ! contains(x3, args[1])
+    Z3_ast x3 = my_mk_internal_string_var(t);
+    Z3_ast x4 = my_mk_internal_string_var(t);
+    Z3_ast tmpLenItems[3] = { indexAst, mk_length(t, args[1]), mk_int(ctx, -1) };
+    Z3_ast tmpLen = Z3_mk_add(ctx, 3, tmpLenItems);
+    thenItems.push_back(Z3_mk_eq(ctx, args[0], mk_concat(t, x3, x4)));
+    thenItems.push_back(Z3_mk_eq(ctx, mk_length(t, x3), tmpLen));
+    thenItems.push_back(Z3_mk_not(ctx, mk_contains(t, x3, args[1])));
 
-    bool canSkip = false;
-    if (getNodeType(t, args[1]) == my_Z3_ConstStr) {
-      std::string arg1Str = getConstStrValue(t, args[1]);
-      if (arg1Str.length() == 1) {
-        canSkip = true;
-      }
-    }
-
-    if (! canSkip) {
-      Z3_ast x3 = my_mk_internal_string_var(t);
-      Z3_ast x4 = my_mk_internal_string_var(t);
-      Z3_ast tmpLenItems[3] = { indexAst, mk_length(t, args[1]), mk_int(ctx, -1) };
-      Z3_ast tmpLen = Z3_mk_add(ctx, 3, tmpLenItems);
-      thenItems.push_back(Z3_mk_eq(ctx, args[0], mk_concat(t, x3, x4)));
-      thenItems.push_back(Z3_mk_eq(ctx, mk_length(t, x3), tmpLen));
-      thenItems.push_back(Z3_mk_not(ctx, mk_contains(t, x3, args[1])));
-    }
     // -----------------------
-    // else branch
-    std::vector<Z3_ast> elseItems;
-    elseItems.push_back(Z3_mk_eq(ctx, indexAst, mk_int(ctx, -1)));
+    // false branch
+    Z3_ast elseBranch = Z3_mk_eq(ctx, indexAst, mk_int(ctx, -1));
 
-    items.push_back(Z3_mk_ite(ctx, condAst, mk_and_fromVector(t, thenItems), mk_and_fromVector(t, elseItems)));
-    breakdownAssert = mk_and_fromVector(t, items);
+    breakdownAssert = Z3_mk_ite(ctx, condAst, mk_and_fromVector(t, thenItems), elseBranch);
     return indexAst;
   }
 }
@@ -517,21 +502,32 @@ Z3_ast reduce_replace(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert
   } else {
     Z3_ast x1 = my_mk_internal_string_var(t);
     Z3_ast x2 = my_mk_internal_string_var(t);
-    Z3_ast x3 = my_mk_internal_string_var(t);
+    Z3_ast i1 = my_mk_internal_int_var(t);
     Z3_ast result = my_mk_internal_string_var(t);
 
-    int pos = 0;
-    Z3_ast and_items[3];
-    // args[0] = x1 . x2. x3
-    and_items[pos++] = Z3_mk_eq(ctx, args[0], mk_concat(t, x1, mk_concat(t, x2, x3)));
-    // ! contains (x1, args[1])
-    and_items[pos++] = Z3_mk_not(ctx, mk_contains(t, x1, args[1]));
-    // IF (x2 == args[1]) THEN result = x1 . args[2] . x3
-    //                    ELSE result = x1 . x2 . x3
-    and_items[pos++] = Z3_mk_ite(ctx, Z3_mk_eq(ctx, x2, args[1]),
-                                      Z3_mk_eq(ctx, result, mk_concat(t, x1, mk_concat(t, args[2], x3))),
-                                      Z3_mk_eq(ctx, result, mk_concat(t, x1, mk_concat(t, x2, x3))));
-    breakdownAssert = Z3_mk_and(ctx, pos, and_items);
+    // condAst = Contains(args[0], args[1])
+    Z3_ast condAst = registerContain(t, args[0], args[1]);
+    // -----------------------
+    // true branch
+    std::vector<Z3_ast> thenItems;
+    //  args[0] = x1 . args[1] . x2
+    thenItems.push_back(Z3_mk_eq(ctx, args[0], mk_concat(t, x1, mk_concat(t, args[1], x2))));
+    //  i1 = |x1|
+    thenItems.push_back(Z3_mk_eq(ctx, i1, mk_length(t, x1)));
+    //  args[0]  = x3 . x4 /\ |x3| = |x1| + |args[1]| - 1 /\ ! contains(x3, args[1])
+    Z3_ast x3 = my_mk_internal_string_var(t);
+    Z3_ast x4 = my_mk_internal_string_var(t);
+    Z3_ast tmpLenItems[3] = {i1, mk_length(t, args[1]), mk_int(ctx, -1) };
+    Z3_ast tmpLen = Z3_mk_add(ctx, 3, tmpLenItems);
+    thenItems.push_back(Z3_mk_eq(ctx, args[0], mk_concat(t, x3, x4)));
+    thenItems.push_back(Z3_mk_eq(ctx, mk_length(t, x3), tmpLen));
+    thenItems.push_back(Z3_mk_not(ctx, mk_contains(t, x3, args[1])));
+    thenItems.push_back(Z3_mk_eq(ctx, result, mk_concat(t, x1, mk_concat(t, args[2], x2))));
+    // -----------------------
+    // false branch
+    Z3_ast elseBranch = Z3_mk_eq(ctx, result, args[0]);
+
+    breakdownAssert = Z3_mk_ite(ctx, condAst, mk_and_fromVector(t, thenItems), elseBranch);
     return result;
   }
 }
