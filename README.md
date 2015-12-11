@@ -75,7 +75,7 @@ Assume we are using cygwin version 2.873 (64 bit)
      http://z3.codeplex.com/downloads/get/500120
 
     * Untar  
-      suppose the z3 src folder is "~/z3/z3_4.1.1"
+      suppose the z3 src folder is "/home/hi/z3/z3"
  
     * Patch        
         $ patch -p0 < z3.patch  
