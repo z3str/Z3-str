@@ -12,7 +12,7 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
 
 
 
-# Install Z3-str2
+# Install Z3-str2: Linux
 
 1. Check out the latest version of Z3-str2 from the git repo.
 
@@ -56,3 +56,93 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
    *  ```Z3-str2.py -f <inputFile>```, e.g 
    
      *  $./Z3-str2.py -f test/concat-002
+
+
+# Install Z3-str2: Cygwin
+Assume we are using cygwin version 2.873 (64 bit)
+
+0. Install cygwin with the following additional packages
+   * "autoconf 2.5" in "Devel"
+   * "dos2unix" in "Untils"
+   * "gcc-g++: GNU Compiler Collectoin" in "Devel" 
+   * "make: The GNU version of the 'make' utility"
+   * "patch" in "Devel"
+   * "python: Python language interpreter" in "Python"
+
+
+1. Build Z3 without patching
+   * Download z3 4.1.1   
+     http://z3.codeplex.com/downloads/get/500120
+
+    * Untar  
+      suppose the z3 src folder is "~/z3/z3_4.1.1"
+ 
+    * Patch        
+        $ patch -p0 < z3.patch  
+        patching file lib/api_user_theory.cpp  
+        patching file lib/buffer.h  
+        patching file lib/debug.h  
+        patching file lib/ref_vector.h  
+        patching file lib/smt_enode.h  
+        patching file lib/theory_arith_core.h  
+        patching file lib/theory_arith.h  
+        patching file lib/user_smt_theory.cpp  
+        patching file lib/user_smt_theory.h  
+        patching file lib/z3_api.h  
+
+    *  autoconf          
+        $ autoconf-2.69
+
+        
+    * configure  
+        $ ./configure  
+        checking for dos2unix... /usr/bin/dos2unix  
+        checking for g++... g++  
+        checking whether the C++ compiler works... yes  
+        checking for C++ compiler default output file name... a.exe  
+        checking for suffix of executables... .exe  
+        checking whether we are cross compiling... no  
+        checking for suffix of object files... o  
+        checking whether we are using the GNU C++ compiler... yes  
+        checking whether g++ accepts -g... yes  
+        checking whether make sets $(MAKE)... no  
+        <b>configure: error: Unknown host platform: CYGWIN_NT-6.1</b>
+
+    
+    * modify configure  
+        host_os=`uname -s`  
+        host_os="Linux"
+
+      
+    * make          
+        It's fine to have warnings like "warning: -fPIC ignored for target (all code is position independent)"  
+
+      
+    * make a
+    
+    
+2. Build Z3-str
+    * Specify Z3 path in Makefile, e.g  
+        Z3_path = /home/hi/z3/z3
+
+    
+    * make
+      
+    * Specify z3str binary in wrapper "Z3-str.py", e.g  
+        solver = "/home/hi/z3/str/str.exe"
+
+      
+    * test  
+        hi@hi-vm ~/z3/str      
+        $ ./Z3-str.py -f tests/concat-001  
+       ************************
+        * v-ok  
+        ************************
+        >> SAT
+        ------------------------
+        y1 : string -> "aaaaaaao"
+        y2 : string -> "y"
+        x : string -> "teaaaaaaaosty"
+        ************************
+        >> etime(s) = 0.100061
+
