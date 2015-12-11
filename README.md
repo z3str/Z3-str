@@ -135,14 +135,13 @@ Assume we are using cygwin version 2.873 (64 bit)
     * test  
         hi@hi-vm ~/z3/str      
         $ ./Z3-str.py -f tests/concat-001  
-       ************************
-        * v-ok  
-        ************************
-        >> SAT
-        ------------------------
-        y1 : string -> "aaaaaaao"
-        y2 : string -> "y"
-        x : string -> "teaaaaaaaosty"
-        ************************
-        >> etime(s) = 0.100061
+        \* v-ok  
+        \*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*  
+        \>\> SAT  
+        \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-  
+        y1 : string -> "aaaaaaao"  
+        y2 : string -> "y"  
+        x : string -> "teaaaaaaaosty"  
+        \*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*  
+        \>\> etime(s) = 0.100061
 
