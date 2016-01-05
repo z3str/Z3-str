@@ -10,9 +10,9 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
 
 
 
+# Installation
 
-
-# Install Z3-str2: Linux
+## Linux
 
 1. Check out the latest version of Z3-str2 from the git repo.
 
@@ -22,29 +22,23 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
   MD5 SUM: ```c0c2367e4de05614a80b3f62480c23db  z3-src-4.1.1.zip```
 
 
-3. Unzip "z3-src-4.1.1.zip" and patch the original Z3. Z3-str2 will work with 
-   the modified Z3 core.
-   * How to patch Z3 core. Suppose the folder name after unzipping is "z3".
-
+3. Unzip "z3-src-4.1.1.zip" and patch the original Z3. Z3-str2 will work with the modified Z3 core. Suppose the folder name after unzipping is "z3".
      *  $ cp z3.patch z3/
      *  $ cd z3
      *  $ patch -p0 < z3.patch
    
-   
+
 4. In the top level folder of Z3 Build the modifed version of Z3
    * $ autoconf
-   
    * $ ./configure
-   
    * $ make
-   
    * $ make a
    
    
 5. Build  Z3-str2
    * Modify variable "Z3_path" in the Z3-str2 Makefile to indicate the patched Z3 location.
 
-     * $ make
+      $ make
 
        
 6. Setup Z3-str2 driver script
@@ -54,11 +48,56 @@ Please refer to [https://sites.google.com/site/z3strsolver/](https://sites.googl
  
 7. Run Z3-str2
    *  ```Z3-str2.py -f <inputFile>```, e.g 
+
+      $./Z3-str2.py -f test/concat-002
+
+
+## Mac OS
+0. Install "autoconf", "dos2unix", "gcc"
+   * $ brew install autoconf
+   * $ brew install dos2unix
+   * $ brew install gcc --without-multilib
+ 
+1. Check out the latest version of Z3-str2 from the git repo.
+
+
+2. Download [the source code of Z3 4.1.1](http://z3.codeplex.com/releases/view/95640)
    
-     *  $./Z3-str2.py -f test/concat-002
+  MD5 SUM: ```c0c2367e4de05614a80b3f62480c23db  z3-src-4.1.1.zip```
 
 
-# Install Z3-str2: Cygwin
+3. Unzip "z3-src-4.1.1.zip" and patch the original Z3. Z3-str2 will work with the modified Z3 core. Suppose the folder name after unzipping is "z3".
+     *  $ cp z3.patch z3/
+     *  $ cd z3
+     *  $ patch -p0 < z3.patch
+   
+
+4. In the top level folder of Z3 Build the modifed version of Z3
+   * $ autoconf
+   * $ CXX=g++-5 CC=gcc-5 ./configure
+   * $ CXX=g++-5 CC=gcc-5 make
+   * $ make a
+   
+   
+5. Build  Z3-str2
+   * Modify variable "Z3_path" in the Z3-str2 Makefile to indicate the patched Z3 location.
+
+      $ make
+
+       
+6. Setup Z3-str2 driver script
+   * In "Z3-str2.py", change the value of the variable "solver" to point to the 
+     Z3-str2 binary "str" just built
+ 
+ 
+7. Run Z3-str2
+   *  ```Z3-str2.py -f <inputFile>```, e.g 
+
+      $./Z3-str2.py -f test/concat-002
+
+
+
+## Cygwin
 Assume we are using cygwin version 2.873 (64 bit)
 
 0. Install cygwin with the following additional packages
@@ -144,4 +183,3 @@ Assume we are using cygwin version 2.873 (64 bit)
         x : string -> "teaaaaaaaosty"  
         \*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*  
         \>\> etime(s) = 0.100061
-
