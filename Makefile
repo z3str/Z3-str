@@ -12,10 +12,20 @@ SOURCE = *.cpp
 INCLUDE = $(Z3_path)/lib
 LIB = $(Z3_path)/bin/external
 
+ifeq ($(shell uname -s), Darwin)
+	CXX = g++-5
+        FLAG = -O3 -std=c++11 -fopenmp
+        LDFLAG = -lz3 -Wall
+else
+	CXX = g++
+        FLAG = -O3 -std=c++11 -fopenmp -static
+        LDFLAG = -lz3 -lrt -Wall
+endif
+
 all: $(SOURCE)
 	@echo ">> Z3 Source Dir: "$(Z3_path)
 	@echo ""
-	g++ -O3 -std=c++11 -fopenmp -static -I$(INCLUDE) -L$(LIB) $(SOURCE) -lz3 -lrt -o str -Wall
+	$(CXX) $(FLAG) -I$(INCLUDE) -L$(LIB) $(SOURCE) $(LDFLAG) -o str
 	@echo ""
 	
 clean:
