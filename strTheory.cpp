@@ -2087,9 +2087,9 @@ void checkRegexIn(Z3_theory t, Z3_ast nn1, Z3_ast nn2) {
  */
 void checkConcatLenInEqc(Z3_theory t, Z3_ast n) {
 #ifdef DEBUGLOG
-  Z3_context ctx = Z3_theory_get_context(t);
-  Z3_ast notNullLenRoot = NULL;
-  std::map<Z3_ast, std::set<Z3_ast> > lenRootMap;
+//   Z3_context ctx = Z3_theory_get_context(t);
+//   Z3_ast notNullLenRoot = NULL;
+   std::map<Z3_ast, std::set<Z3_ast> > lenRootMap;
 #endif
   Z3_ast eqc_n = n;
   do {
@@ -2097,9 +2097,9 @@ void checkConcatLenInEqc(Z3_theory t, Z3_ast n) {
 #ifdef DEBUGLOG
     Z3_ast lenRoot = Z3_theory_getArithEqcRoot(t, mk_length(t, eqc_n));
     lenRootMap[lenRoot].insert(eqc_n);
-    if (lenRoot != NULL) {
-      notNullLenRoot = lenRoot;
-    }
+//     if (lenRoot != NULL) {
+//       notNullLenRoot = lenRoot;
+//     }
 #endif
 
     if (isConcatFunc(t, eqc_n)) {
@@ -3404,8 +3404,9 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
     if (concat_eq_constStr_map.find(deAliasConcat) == concat_eq_constStr_map.end()) {
       bool nodeHasEqcValue = false;
       Z3_ast nodeValue = get_eqc_value(t, deAliasConcat, nodeHasEqcValue);
-      if (nodeHasEqcValue)
+      if (nodeHasEqcValue) {
         concat_eq_constStr_map[deAliasConcat] = nodeValue;
+      }
     }
     // --------------------------------------------------
     // (4) concat_eq_concat:
@@ -3669,7 +3670,9 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
     mostRightNodes.clear();
 
     Z3_ast mLConst = NULL;
+    Z3_ast concatWithmLConst = NULL;
     Z3_ast mRConst = NULL;
+    Z3_ast concatWithmRConst = NULL;
 
     for (std::map<Z3_ast, int>::iterator itor1 = itor->second.begin(); itor1 != itor->second.end(); itor1++) {
       Z3_ast concatNode = itor1->first;
@@ -3677,6 +3680,7 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
       if (getNodeType(t, mLNode) == my_Z3_ConstStr) {
         if (mLConst == NULL && getConstStrValue(t, mLNode) != "") {
           mLConst = mLNode;
+          concatWithmLConst = concatNode;
         }
       } else {
         mostLeftNodes[mLNode] = concatNode;
@@ -3686,6 +3690,7 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
       if (getNodeType(t, mRNode) == my_Z3_ConstStr) {
         if (mRConst == NULL && getConstStrValue(t, mRNode) != "") {
           mRConst = mRNode;
+          concatWithmRConst = concatNode;
         }
       } else {
         mostRightNodes[mRNode] = concatNode;
@@ -3702,6 +3707,26 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
         Z3_ast deVar = getAliasIndexAst(aliasIndexMap, itor1->first);
         if (depMap[deVar].find(mLConst) == depMap[deVar].end() || depMap[deVar][mLConst] != 1) {
           depMap[deVar][mLConst] = 4;
+
+          bool deVarHasEqcValue = false;
+          get_eqc_value(t, deVar, deVarHasEqcValue);
+          if (! deVarHasEqcValue) {
+            int deVarLen = getLenValue(t, deVar);
+            std::string lConstStr = getConstStrValue(t, mLConst);
+            if (deVarLen != -1 && deVarLen <= (int) lConstStr.length()) {
+              std::string prefixStr = lConstStr.substr(0, deVarLen);
+              std::vector<Z3_ast> litems;
+              litems.push_back(Z3_mk_eq(ctx, itor1->second, concatWithmLConst));
+              if (itor1->first != deVar) {
+                litems.push_back(Z3_mk_eq(ctx, itor1->first, deVar));
+              }
+              litems.push_back(Z3_mk_eq(ctx, mk_length(t, deVar), mk_int(ctx, deVarLen)));
+              Z3_ast implyL = mk_and_fromVector(t, litems);
+              Z3_ast implyR = Z3_mk_eq(ctx, deVar, my_mk_str_value(t, prefixStr.c_str()));
+              addAxiom(t, Z3_mk_implies(ctx, implyL, implyR), __LINE__);
+            }
+          }
+
         }
       }
     }
@@ -3750,6 +3775,26 @@ int ctxDepAnalysis(Z3_theory t, std::map<Z3_ast, int> & strVarMap, std::map<Z3_a
         Z3_ast deVar = getAliasIndexAst(aliasIndexMap, itor1->first);
         if (depMap[deVar].find(mRConst) == depMap[deVar].end() || depMap[deVar][mRConst] != 1) {
           depMap[deVar][mRConst] = 5;
+
+          bool deVarHasEqcValue = false;
+          get_eqc_value(t, deVar, deVarHasEqcValue);
+          if (! deVarHasEqcValue) {
+            int deVarLen = getLenValue(t, deVar);
+            std::string rConstStr = getConstStrValue(t, mRConst);
+            if (deVarLen != -1 && deVarLen <= (int) rConstStr.length()) {
+              int startIdx = rConstStr.length() - deVarLen;
+              std::string suffixStr = rConstStr.substr(startIdx, deVarLen);
+              std::vector<Z3_ast> litems;
+              litems.push_back(Z3_mk_eq(ctx, itor1->second, concatWithmRConst));
+              if (itor1->first != deVar) {
+                litems.push_back(Z3_mk_eq(ctx, itor1->first, deVar));
+              }
+              litems.push_back(Z3_mk_eq(ctx, mk_length(t, deVar), mk_int(ctx, deVarLen)));
+              Z3_ast implyL = mk_and_fromVector(t, litems);
+              Z3_ast implyR = Z3_mk_eq(ctx, deVar, my_mk_str_value(t, suffixStr.c_str()));
+              addAxiom(t, Z3_mk_implies(ctx, implyL, implyR), __LINE__);
+            }
+          }
         }
       }
     }
