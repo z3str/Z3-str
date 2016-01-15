@@ -19,7 +19,7 @@ ifeq ($(shell uname -s), Darwin)
 else
 	CXX = g++
         FLAG = -O3 -std=c++11 -fopenmp -static
-        LDFLAG = -lz3 -lrt -Wall
+        LDFLAG = -lz3 -lrt -Wall -ldl
 endif
 
 all: $(SOURCE)
