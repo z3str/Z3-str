@@ -18,7 +18,7 @@ ifeq ($(shell uname -s), Darwin)
         LDFLAG = -lz3 -Wall
 else
 	CXX = g++
-        FLAG = -O3 -std=c++11 -fopenmp -static
+        FLAG = -O3 -std=c++11 -fopenmp
         LDFLAG = -lz3 -lrt -Wall -ldl
 endif
 
