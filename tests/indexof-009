@@ -2,7 +2,7 @@
 (declare-variable X String)
 
 (assert (= i (Indexof "original" X) ) )
-(assert (= (Length X) 7))
+(assert (= (Length X) 5))
 (assert (>= i 1) )
 
 

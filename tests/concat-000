@@ -3,11 +3,13 @@
 (declare-variable c1 String)
 (declare-variable c2 String)
 (declare-variable x String)
+(declare-variable y String)
 
 
 (assert (= a ( Concat ( Concat "te" c1 ) ( Concat "\t" c2 ) ) ) )
 (assert (= a b) )
-(assert (= x "str  ") )
+(assert (= x "\"\"") )
+(assert (= y "") )
 
 (check-sat)
 (get-model)

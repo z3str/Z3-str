@@ -1,0 +1,11 @@
+(declare-const r String)
+(declare-const s String)
+
+(assert (= s "aa"))
+(assert (= r (Concat (Replace s "aa" "x") "a")))
+
+(assert (not (= (Length s) (Length r))))
+
+
+
+(check-sat)

@@ -1,0 +1,9 @@
+(declare-variable x String)
+
+(assert (RegexIn x (RegexPlus (Str2Reg "a") ) ) )
+
+(assert (> 1 (Length x) ) )
+
+
+(check-sat)
+(get-model)

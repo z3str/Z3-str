@@ -4,8 +4,8 @@
 (declare-variable Str2 String)
 
 
-(assert (= Str1 "###ab") ) 
-(assert (= i1 (Indexof Str1 "##") ) )
+(assert (= Str1 "aa") ) 
+(assert (= i1 (Indexof Str1 "aa") ) )
 
 
 

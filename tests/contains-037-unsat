@@ -1,0 +1,11 @@
+(declare-variable X String)
+(declare-variable Z String)
+(declare-variable Y String)
+
+(assert (Contains Z X))
+
+(assert (= X (Concat Y "/*]]>*/")))
+
+(assert (= Z "*document.createElement(\"header\");*document.createElement(\"nav\");*document.createElement(\"article\");*document.createElement(\"section\");*document.createElement(\"footer\");*" ))
+
+(get-model)

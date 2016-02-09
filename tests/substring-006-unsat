@@ -1,0 +1,18 @@
+(declare-variable X String)
+(declare-variable idx1 Int)
+(declare-variable idx2 Int)
+(declare-variable Z String)
+(declare-variable Y String)
+
+
+; (declare-variable s114483 String)
+; (assert (= s114483 "/*]]>*/" ))
+
+
+(assert (= X (Substring Z idx1 idx2)))
+
+(assert (= X (Concat Y "/*]]>*/")))
+
+(assert (= Z "*document.createElement(\"header\");*document.createElement(\"nav\");*document.createElement(\"article\");*document.createElement(\"section\");*document.createElement(\"footer\");*" ))
+
+(get-model)

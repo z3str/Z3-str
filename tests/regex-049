@@ -1,0 +1,12 @@
+(declare-variable key String)
+(declare-variable val String)
+
+(assert (RegexIn key (RegexStar (RegexCharRange "a" "b"))) )
+(assert (<= 5 (Length key)))
+(assert (>= 7 (Length key)))
+
+
+
+
+(check-sat)
+(get-model)

@@ -1,0 +1,13 @@
+(declare-variable key String)
+(declare-variable val String)
+
+(define-fun QuoteRegex ((aRegex Regex)) Regex 
+    (RegexConcat (RegexConcat (Str2Reg "$") aRegex) (Str2Reg "+")))
+
+(assert (RegexIn key (QuoteRegex (RegexStar (Str2Reg "[")))))
+
+(assert (= (Length key) 10)) 
+
+
+(check-sat)
+(get-model)

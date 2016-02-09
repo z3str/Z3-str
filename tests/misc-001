@@ -1,0 +1,25 @@
+(declare-fun s1 () String)
+(declare-fun s2 () String)
+(declare-fun s3 () String)
+(declare-fun s4 () String)
+(declare-fun s5 () String)
+(declare-fun s6 () String)
+(declare-fun s7 () String)
+(declare-fun s8 () String)
+(declare-fun s9 () String)
+(declare-fun s10 () String)
+
+(assert (not (= s1 s2 )))
+(assert (not (= s2 s3 )))
+(assert (not (= s3 s4 )))
+(assert (not (= (Concat s3 s4) s5 )))
+
+(assert (= s1 s5))
+(assert (= s1 s6))
+(assert (= s7 "a"))
+(assert (= s8 "c"))
+
+
+
+(check-sat)
+(get-model)
