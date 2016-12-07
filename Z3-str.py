@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-
+from __future__ import division
 import sys
 import getopt
 import time
@@ -8,6 +8,7 @@ import os
 import subprocess
 import signal
 from subprocess import Popen, PIPE
+
 
 # "solver" should point to the binary built. 
 # e.g. "/home/z3-str/str" or "/home/work/tool/z3/myStrTheory/str"
@@ -116,7 +117,7 @@ def collectType(tt):
   global varTypeDict
   tt = ' '.join(tt.split())
   varName = tt[0:tt.find(' ')].strip()
-  varType = tt[tt.find(' ') + 1: ].strip().lower()
+  varType = tt[tt.find(' ') + 1: ].strip()
   varTypeDict[varName] = varType  
   
   
@@ -266,21 +267,38 @@ def processOutput(output):
   return ''.join(result), 0
 
 
+def isInt(s):
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
+
 
 def genSimpValue(vType, vValue):
-  if vType == "string":
+  if vType.lower() == "string":
     return vValue    
-  elif vType == "bool":
+  elif vType.lower() == "bool":
     if vValue == "true":
       return "true"
     else:
       return "false"
-  elif vType == "int":
+  elif vType.lower() == "int":
     intv = int(vValue)
     if intv < 0:
       return "(- 0 %d" % (-intv) + ")"
     else:
       return "%d" % intv
+  elif vType == "real":
+    realv = float(eval(vValue))
+    res = ""
+    if realv < 0.0:
+      res = "(- 0.0 %g" % (-realv) + ")"
+    else:
+      res = "%g" % realv
+    if isInt(res):
+      res = res + ".0"
+    return res
   else:
     return vValue
 
@@ -422,6 +440,7 @@ def genSolAsserts():
   global varTypeDict
   global varSolution
   result = []
+  newSortValueDeclare = {}
   for name, value in varSolution.items():
     varType = varTypeDict[name]
     if isArrayType(varType):
@@ -429,8 +448,14 @@ def genSolAsserts():
       for asst in assertsList:
         result.append(asst)
     else:      
-      result.append("(assert (= " + name + " " + genSimpValue(varType, value) + ") )\n")      
-  return ''.join(result)
+      if not varType.lower() in {"int": 0, "real": 0, "string": 0, "bool": 0}.keys():
+        newSortValueDeclare[value] = varType      
+      result.append("( assert (= " + name + " " + genSimpValue(varType, value) + ") )\n")
+  extraDeclare = ""
+  for name in newSortValueDeclare.keys():
+    extraDeclare += '( declare-const  ' + name + '  ' + newSortValueDeclare[name] + ' )\n' 
+  res = ''.join(result)
+  return extraDeclare + '\n' + res
   
   
 
