@@ -20,6 +20,7 @@ tmpEncodingDir = "/tmp/z3_str_convert"
 clearTempFile = 1
 checkAnswer = 1
 tmpStrVarCnt = 0
+rawModel = 1
 #=================================================================== 
 
 encodeDict = {
@@ -496,6 +497,10 @@ if __name__ == '__main__':
     print "Error: Input file does not exist: \"" + inputFile + "\""    
     exit(0)
   
+  rawModelFile = "/tmp/z3str_solution.txt"
+  if os.path.exists(rawModelFile):
+    os.remove(rawModelFile)  
+  
   convertDir = tmpEncodingDir;
   if not os.path.exists(convertDir):
     os.makedirs(convertDir)
@@ -532,6 +537,12 @@ if __name__ == '__main__':
     
     outStr, hasError = processOutput(output)
     
+    rawModelStr = ""
+    if os.path.exists(rawModelFile):
+      with open(rawModelFile, 'r') as rawModelFilePtr:
+        rawModelStr = rawModelFilePtr.read()
+      os.remove(rawModelFile)   
+    
     if hasError == 1:      
       sys.stdout.write(outStr)
       print "> Exit"
@@ -555,15 +566,19 @@ if __name__ == '__main__':
     #  - If UNSAT/UNKNOWN
     # --------------------------------------------------
     if outStr.find("String!val!") != -1:
-      print "* v-fail"
-      print "************************"
-      print ">> UNKNOWN  (1)"
-      print "************************" 
-      sys.stdout.write(">> etime(s) = %f\n\n" % wallT1)  
+      if rawModel != 1:
+        print "* v-fail"
+        print "************************"
+        print ">> UNKNOWN  (1)"
+        print "************************" 
+        sys.stdout.write(">> etime(s) = %f\n\n" % wallT1)
+      else:
+        print "unknown"
+        
     elif outStr.find(">> SAT") != -1: 
       if outStr.find("(error ") != -1:
-        outStr = outStr.replace(">> SAT", "").replace("************************\n", "").replace("------------------------\n", "").replace("\n\n", "\n")
-        print "Error:\n------------------------\n" + outStr + "\n"
+        outStr = outStr.replace(">> SAT", "").replace("************************\n", "").replace("------------------------\n", "").replace("\n\n", "\n")        
+        print "error\n------------------------\n" + outStr + "\n"
       else:
         ii = fileContent.find("(check-sat)")    
         solutionAssert = genSolAsserts()
@@ -584,23 +599,36 @@ if __name__ == '__main__':
         if err1.find(">> SAT") != -1:
           if err1.find("(error ") != -1:
             err1 = err1.replace(">> SAT", "").replace("************************\n", "").replace("------------------------\n", "").replace("\n\n", "\n")
-            print "ERROR: Solution Verification Syntax\n------------------------\n" + err1 + "\n"
+            print "error\n------------------------\nSolution Verification Syntax:\n" + err1 + "\n"
           else:
-            print "* v-ok" 
-            sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % (wallT1 + wallT2))  
+            if rawModel != 1:
+              print "* v-ok"             
+              sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % (wallT1 + wallT2))
+            else:              
+              print "sat"
+              print "(model\n" + rawModelStr + "\n)"
         else:
-          print "* v-fail"
-          print "************************"
-          print ">> UNKNOWN (2)"
-          print "************************"
-          print ">> etime(s) = %f" % (wallT1 + wallT2)
+          if rawModel != 1:
+            print "* v-fail"
+            print "************************"
+            print ">> UNKNOWN (2)"
+            print "************************"
+            print ">> etime(s) = %f" % (wallT1 + wallT2)
+          else:
+            print "unknown"
         if clearTempFile == 1:
           if os.path.exists(verifyInputFilename):
             os.remove(verifyInputFilename)
           if os.path.exists(convertedVerifyInputFilename):
             os.remove(convertedVerifyInputFilename)
-    else:      
-      sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % wallT1)  
+    else:
+      if rawModel != 1:
+        sys.stdout.write(outStr + ">> etime(s) = %f\n\n" % wallT1)
+      else:
+        if outStr.find(">> UNSAT") != -1:
+          print "unsat"
+        else:
+          print "unknown"
       
   except KeyboardInterrupt:
     os.kill(child_pid, signal.SIGTERM)

@@ -6084,6 +6084,15 @@ int check(Z3_theory t) {
       printf("SAT\n");
       printf("------------------------\n");
       display_model(t, stdout, m);
+
+
+#ifdef RAWMODEL
+      Z3_set_ast_print_mode(ctx, Z3_PRINT_SMTLIB2_COMPLIANT);
+      FILE * rawSolFile = fopen("/tmp/z3str_solution.txt", "w");
+      fprintf(rawSolFile, "%s", Z3_model_to_string(ctx, m));
+      fclose(rawSolFile);
+#endif
+
       break;
     }
   }

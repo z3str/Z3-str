@@ -7,8 +7,10 @@ default: all
 # -------------------------------------------------------------------
 Z3_path = 
 
+#-----------------------------------------
+
 JUNK = str
-SOURCE = *.cpp
+SOURCE = strAstReduce.cpp strArgmt.cpp strRegex.cpp strTheory.cpp strMain.cpp
 INCLUDE = $(Z3_path)/lib
 LIB = $(Z3_path)/bin/external
 
@@ -25,7 +27,13 @@ endif
 all: $(SOURCE)
 	@echo ">> Z3 Source Dir: "$(Z3_path)
 	@echo ""
-	$(CXX) $(FLAG) -I$(INCLUDE) -L$(LIB) $(SOURCE) $(LDFLAG) -o str
+	$(CXX) $(FLAG)  -I$(INCLUDE) -L$(LIB) $(SOURCE) $(LDFLAG) -o str
+	@echo ""
+	
+rawmodel: $(SOURCE)
+	@echo ">> Z3 Source Dir: "$(Z3_path)
+	@echo ""
+	$(CXX) $(FLAG) -D RAWMODEL -I$(INCLUDE) -L$(LIB) $(SOURCE) $(LDFLAG) -o str
 	@echo ""
 	
 clean:
