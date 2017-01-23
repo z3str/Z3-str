@@ -946,7 +946,15 @@ int getConstIntValue(Z3_theory t, Z3_ast n) {
   Z3_context ctx = Z3_theory_get_context(t);
   if (getNodeType(t, n) == my_Z3_Num) {
     char * str = (char *) Z3_ast_to_string(ctx, n);
-    int val = atoi(str);
+    std::string ts (str);
+    int val;
+    if (ts.find("(") == 0 && ts.find("-") == 1 && ts.find(")") == (ts.length() - 1)) {
+      std::string sub = ts.substr(1, ts.length() - 2);
+      sub.erase(remove_if(sub.begin(), sub.end(), isspace),sub.end());
+      val = atoi(sub.c_str());
+    } else {
+      val = atoi(str);
+    }
     return val;
   } else {
     fprintf(stdout, "> Error: converting a non integer string to int @ %d. Exit.\n", __LINE__);
@@ -6084,6 +6092,15 @@ int check(Z3_theory t) {
       printf("SAT\n");
       printf("------------------------\n");
       display_model(t, stdout, m);
+
+
+#ifdef RAWMODEL
+      Z3_set_ast_print_mode(ctx, Z3_PRINT_SMTLIB2_COMPLIANT);
+      FILE * rawSolFile = fopen("/tmp/z3str_solution.txt", "w");
+      fprintf(rawSolFile, "%s", Z3_model_to_string(ctx, m));
+      fclose(rawSolFile);
+#endif
+
       break;
     }
   }

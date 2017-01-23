@@ -538,20 +538,75 @@ Z3_ast reduce_replace(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert
  */
 Z3_ast reduce_subStr(Z3_theory t, Z3_ast const args[], Z3_ast & breakdownAssert) {
   Z3_context ctx = Z3_theory_get_context(t);
+  bool arg0IsConstStr = (getNodeType(t, args[0]) == my_Z3_ConstStr);
+  bool arg1IsConstNum = (getNodeType(t, args[1]) == my_Z3_Num);
+  bool arg2IsConstNum = (getNodeType(t, args[2]) == my_Z3_Num);
+
+  // shortcut
+  if (arg1IsConstNum && getConstIntValue(t, args[1]) < 0) {
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "reducing substr-1\n");
+#endif
+    breakdownAssert = NULL;
+    return my_mk_str_value(t, "");
+  }
+  // shortcut: arg0 is an empty string
+  if (arg0IsConstStr && "" == getConstStrValue(t, args[0])) {
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "reducing substr-2\n");
+#endif
+    breakdownAssert = NULL;
+    return my_mk_str_value(t, "");
+  }
+  // shortcut
+  if (arg0IsConstStr && arg2IsConstNum) {
+    int len = getConstStrValue(t, args[0]).length();
+    int offset = getConstIntValue(t, args[2]);
+    if (offset > len) {
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "reducing substr-3: len = %d, offset = %d\n", len, offset);
+#endif
+      breakdownAssert = NULL;
+      return my_mk_str_value(t, "");
+    }
+  }
+  // shortcut
+  if (arg0IsConstStr && arg1IsConstNum && arg2IsConstNum) {
+    std::string arg0Str = getConstStrValue(t, args[0]);
+    int idx = getConstIntValue(t, args[1]);
+    int offset = getConstIntValue(t, args[2]);
+    int len = arg0Str.length();
+    if ((idx + offset) > len) {
+#ifdef DEBUGLOG
+    __debugPrint(logFile, "reducing substr-4: len = %d, idx = %d, offset = %d\n", len, idx, offset);
+#endif
+      breakdownAssert = NULL;
+      return my_mk_str_value(t, "");
+    }
+  }
+
+  // arg1 >= 0 && (arg1 + arg2) <= len(arg0)
+  Z3_ast cond_items[2];
+  cond_items[0] = Z3_mk_ge(ctx, args[1], mk_int(ctx, 0));
+  Z3_ast len_add[2] = {args[1], args[2]};
+  cond_items[1] = Z3_mk_le(ctx, Z3_mk_add(ctx, 2, len_add), mk_length(t, args[0]));
+  Z3_ast cond = Z3_mk_and(ctx, 2, cond_items);
 
   Z3_ast ts0 = my_mk_internal_string_var(t);
   Z3_ast ts1 = my_mk_internal_string_var(t);
   Z3_ast ts2 = my_mk_internal_string_var(t);
 
-  Z3_ast ts0ContainsTs1 = registerContain(t, args[0], ts1);
-
   Z3_ast and_item[4];
-  and_item[0] = ts0ContainsTs1;
+  and_item[0] = registerContain(t, args[0], ts1);
   and_item[1] = Z3_mk_eq(ctx, args[0], mk_concat(t, ts0, mk_concat(t, ts1, ts2)));
   and_item[2] = Z3_mk_eq(ctx, args[1], mk_length(t, ts0));
   and_item[3] = Z3_mk_eq(ctx, args[2], mk_length(t, ts1));
+  Z3_ast true_branch = Z3_mk_and(ctx, 4, and_item);
 
-  breakdownAssert = Z3_mk_and(ctx, 4, and_item);
+  Z3_ast false_branch = Z3_mk_eq(ctx, ts1, my_mk_str_value(t, ""));
+
+  breakdownAssert = Z3_mk_ite(ctx, cond, true_branch, false_branch);
+
   return ts1;
 }
 
@@ -849,7 +904,9 @@ Z3_bool cb_reduce_app(Z3_theory t, Z3_func_decl d, unsigned n, Z3_ast const * ar
     printZ3Node(t, breakDownAst);
     __debugPrint(logFile, "\n\n");
 #endif
-    Z3_assert_cnstr(ctx, breakDownAst);
+    if (breakDownAst != NULL) {
+      Z3_assert_cnstr(ctx, breakDownAst);
+    }
     delete[] convertedArgs;
     return Z3_TRUE;
   }
