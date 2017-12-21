@@ -1,3 +1,10 @@
+
+#### Z3-str2 is not actively maintained anymore. 
+
+#### Please see [https://sites.google.com/site/z3strsolver/](https://sites.google.com/site/z3strsolver/) for z3str3 and latest versions.
+
+___
+
 Z3-str2 is a string theory plug-in built on the powerful Z3 SMT solver.
 
 Z3-str2 treats strings as a primitive type, thus avoiding the inherent limitations 
